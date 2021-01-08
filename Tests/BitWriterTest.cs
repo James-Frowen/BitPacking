@@ -1,5 +1,5 @@
 using NUnit.Framework;
-using UnityEngine;
+using System;
 
 namespace JamesFrowen.BitPacking.Tests
 {
@@ -8,11 +8,18 @@ namespace JamesFrowen.BitPacking.Tests
         private const int BufferSize = 1000;
         const int max = (1 << 10) - 1;
 
+        Random random = new Random();
+
+        uint randomUint(int min, int max)
+        {
+            return (uint)this.random.Next(0, max);
+        }
+
         [Test]
         [Repeat(1000)]
         public void CanWrite32BitsRepeat()
         {
-            var inValue = (uint)Random.Range(0, int.MaxValue);
+            var inValue = this.randomUint(0, int.MaxValue);
 
             var writer = new BitWriter(BufferSize);
 
@@ -20,7 +27,7 @@ namespace JamesFrowen.BitPacking.Tests
 
             writer.Flush();
 
-            var reader = new BitReader(writer.ToSegment());
+            var reader = new BitReader(writer.ToArraySegment());
 
             var outValue = reader.Read(32);
 
@@ -31,9 +38,9 @@ namespace JamesFrowen.BitPacking.Tests
         [Repeat(1000)]
         public void CanWrite3MultipleValuesRepeat()
         {
-            var inValue1 = (uint)Random.Range(0, max);
-            var inValue2 = (uint)Random.Range(0, max);
-            var inValue3 = (uint)Random.Range(0, max);
+            var inValue1 = this.randomUint(0, max);
+            var inValue2 = this.randomUint(0, max);
+            var inValue3 = this.randomUint(0, max);
 
             var writer = new BitWriter(BufferSize);
 
@@ -43,7 +50,7 @@ namespace JamesFrowen.BitPacking.Tests
 
             writer.Flush();
 
-            var reader = new BitReader(writer.ToSegment());
+            var reader = new BitReader(writer.ToArraySegment());
 
             var outValue1 = reader.Read(10);
             var outValue2 = reader.Read(10);
@@ -58,14 +65,14 @@ namespace JamesFrowen.BitPacking.Tests
         [Repeat(1000)]
         public void CanWrite8MultipleValuesRepeat()
         {
-            var inValue1 = (uint)Random.Range(0, max);
-            var inValue2 = (uint)Random.Range(0, max);
-            var inValue3 = (uint)Random.Range(0, max);
-            var inValue4 = (uint)Random.Range(0, max);
-            var inValue5 = (uint)Random.Range(0, max);
-            var inValue6 = (uint)Random.Range(0, max);
-            var inValue7 = (uint)Random.Range(0, max);
-            var inValue8 = (uint)Random.Range(0, max);
+            var inValue1 = this.randomUint(0, max);
+            var inValue2 = this.randomUint(0, max);
+            var inValue3 = this.randomUint(0, max);
+            var inValue4 = this.randomUint(0, max);
+            var inValue5 = this.randomUint(0, max);
+            var inValue6 = this.randomUint(0, max);
+            var inValue7 = this.randomUint(0, max);
+            var inValue8 = this.randomUint(0, max);
 
             var writer = new BitWriter(BufferSize);
 
@@ -80,7 +87,7 @@ namespace JamesFrowen.BitPacking.Tests
 
             writer.Flush();
 
-            var reader = new BitReader(writer.ToSegment());
+            var reader = new BitReader(writer.ToArraySegment());
 
             var outValue1 = reader.Read(10);
             var outValue2 = reader.Read(10);
@@ -120,7 +127,7 @@ namespace JamesFrowen.BitPacking.Tests
 
             writer.Flush();
 
-            var reader = new BitReader(writer.ToSegment());
+            var reader = new BitReader(writer.ToArraySegment());
 
             var outValue1 = reader.Read(10);
             Assert.That(outValue1, Is.EqualTo(inValue1), $"Failed [{inValue1},{inValue2},{inValue3},{inValue4},{inValue5},{inValue6},{inValue7},{inValue8}]");

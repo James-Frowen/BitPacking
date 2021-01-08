@@ -6,6 +6,8 @@ namespace JamesFrowen.BitPacking
 {
     public class BitReader
     {
+        // todo allow this to work with pooling
+
         private const int ReadSize = 32;
 
         private byte[] buffer;

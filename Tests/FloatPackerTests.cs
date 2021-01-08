@@ -23,7 +23,7 @@ namespace JamesFrowen.BitPacking.Tests
             packer.Pack(writer, inValue);
             writer.Flush();
 
-            var reader = new BitReader(writer.ToSegment());
+            var reader = new BitReader(writer.ToArraySegment());
             var outValue = packer.Unpack(reader);
 
 

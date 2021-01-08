@@ -5,6 +5,7 @@ namespace JamesFrowen.BitPacking
 {
     public class BitWriter
     {
+        // todo allow this to work with pooling
         // todo try writing to buffer directly instead of using scratch
 
         private const int WriteSize = 32;
@@ -82,7 +83,7 @@ namespace JamesFrowen.BitPacking
             // set to 0 incase flush is called twice
             this.bitsInScratch = 0;
         }
-        public ArraySegment<byte> ToSegment()
+        public ArraySegment<byte> ToArraySegment()
         {
             this.Flush();
             return new ArraySegment<byte>(this.buffer, 0, this.writeCount);
@@ -105,7 +106,7 @@ namespace JamesFrowen.BitPacking
             this.buffer[this.writeCount] = (byte)(toWrite);
             this.buffer[this.writeCount + 1] = (byte)(toWrite >> 8);
             this.buffer[this.writeCount + 2] = (byte)(toWrite >> 16);
-            this.writeCount += 4;
+            this.writeCount += 3;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -113,14 +114,14 @@ namespace JamesFrowen.BitPacking
         {
             this.buffer[this.writeCount] = (byte)(toWrite);
             this.buffer[this.writeCount + 1] = (byte)(toWrite >> 8);
-            this.writeCount += 4;
+            this.writeCount += 2;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void write8bitToBuffer(uint toWrite)
         {
             this.buffer[this.writeCount] = (byte)(toWrite);
-            this.writeCount += 4;
+            this.writeCount += 1;
         }
     }
 }
