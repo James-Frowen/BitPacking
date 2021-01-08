@@ -1,11 +1,11 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.26124.0
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30717.126
 MinimumVisualStudioVersion = 15.0.26124.0
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JamesFrowen.BitPacking", "JamesFrowen.BitPacking.csproj", "{A507F975-27D5-48B4-B680-15BEFDA6410C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JamesFrowen.BitPacking", "JamesFrowen.BitPacking.csproj", "{A507F975-27D5-48B4-B680-15BEFDA6410C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JamesFrowen.BitPacking.Tests", "JamesFrowen.BitPacking.Tests.csproj", "{783A31BE-72F8-40FF-B84E-2D7083EF1E4B}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JamesFrowen.BitPacking.Tests", "JamesFrowen.BitPacking.Tests.csproj", "{783A31BE-72F8-40FF-B84E-2D7083EF1E4B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,9 +15,6 @@ Global
 		Release|Any CPU = Release|Any CPU
 		Release|x64 = Release|x64
 		Release|x86 = Release|x86
-	EndGlobalSection
-	GlobalSection(SolutionProperties) = preSolution
-		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{A507F975-27D5-48B4-B680-15BEFDA6410C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
@@ -44,5 +41,11 @@ Global
 		{783A31BE-72F8-40FF-B84E-2D7083EF1E4B}.Release|x64.Build.0 = Release|Any CPU
 		{783A31BE-72F8-40FF-B84E-2D7083EF1E4B}.Release|x86.ActiveCfg = Release|Any CPU
 		{783A31BE-72F8-40FF-B84E-2D7083EF1E4B}.Release|x86.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {EB2D3F0F-0F95-4D97-91BF-5B3348AF9729}
 	EndGlobalSection
 EndGlobal
