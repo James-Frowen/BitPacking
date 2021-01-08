@@ -122,7 +122,7 @@ namespace JamesFrowen.BitPacking
             return this.buffer[offset]
                 | ((uint)this.buffer[offset + 1] << 8)
                 | ((uint)this.buffer[offset + 2] << 16)
-                | ((uint)this.buffer[offset + 2] << 24);
+                | ((uint)this.buffer[offset + 3] << 24);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

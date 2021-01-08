@@ -96,7 +96,7 @@ namespace JamesFrowen.BitPacking
             this.buffer[this.writeCount] = (byte)(toWrite);
             this.buffer[this.writeCount + 1] = (byte)(toWrite >> 8);
             this.buffer[this.writeCount + 2] = (byte)(toWrite >> 16);
-            this.buffer[this.writeCount + 2] = (byte)(toWrite >> 24);
+            this.buffer[this.writeCount + 3] = (byte)(toWrite >> 24);
             this.writeCount += 4;
         }
 

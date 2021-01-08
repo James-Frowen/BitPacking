@@ -12,7 +12,7 @@ namespace JamesFrowen.BitPacking.Tests
 
         uint randomUint(int min, int max)
         {
-            return (uint)this.random.Next(0, max);
+            return (uint)this.random.Next(min, max);
         }
 
         [Test]
