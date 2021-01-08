@@ -1,5 +1,4 @@
 ﻿using System.Runtime.CompilerServices;
-using Mirror;
 
 namespace JamesFrowen.BitPacking
 {
@@ -18,38 +17,38 @@ namespace JamesFrowen.BitPacking
 
         public FloatPacker(float min, float max, float precision)
         {
-            minFloat = min;
-            maxFloat = max;
+            this.minFloat = min;
+            this.maxFloat = max;
 
-            float range = max - min;
-            uint rangeUint = (uint)(range / precision);
+            var range = max - min;
+            var rangeUint = (uint)(range / precision);
 
-            bitCount = BitCountHelper.BitCountFromRange(rangeUint);
+            this.bitCount = BitCountHelper.BitCountFromRange(rangeUint);
 
-            minUint = 0u;
-            maxUint = (1u << bitCount) - 1u;
+            this.minUint = 0u;
+            this.maxUint = (1u << this.bitCount) - 1u;
 
-            readMask = maxUint;
-            readMaskLong = maxUint;
+            this.readMask = this.maxUint;
+            this.readMaskLong = this.maxUint;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Pack(BitWriter writer, float value)
         {
-            uint v = Compression.ScaleToUInt(value, minFloat, maxFloat, minUint, maxUint);
-            writer.Write(v, bitCount);
+            var v = Compression.ScaleToUInt(value, this.minFloat, this.maxFloat, this.minUint, this.maxUint);
+            writer.Write(v, this.bitCount);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public float Unpack(BitReader reader)
         {
-            uint v = reader.Read(bitCount);
-            return Compression.ScaleFromUInt(v, minFloat, maxFloat, minUint, maxUint);
+            var v = reader.Read(this.bitCount);
+            return Compression.ScaleFromUInt(v, this.minFloat, this.maxFloat, this.minUint, this.maxUint);
         }
 
         public override string ToString()
         {
-            return $"FloatPacker:[bitCount:{bitCount}, float:{minFloat}->{maxFloat}, uint:{minUint}->{maxUint}]";
+            return $"FloatPacker:[bitCount:{this.bitCount}, float:{this.minFloat}->{this.maxFloat}, uint:{this.minUint}->{this.maxUint}]";
         }
     }
 }

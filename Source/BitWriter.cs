@@ -1,26 +1,33 @@
 using System;
-using System.IO;
 using System.Runtime.CompilerServices;
-using Mirror;
 
 namespace JamesFrowen.BitPacking
 {
     public class BitWriter
     {
+        // todo try writing to buffer directly instead of using scratch
+
         private const int WriteSize = 32;
-        NetworkWriter writer;
+
+        byte[] buffer;
+        int writeCount;
 
         ulong scratch;
         int bitsInScratch;
 
-        public BitWriter() { }
-        public BitWriter(NetworkWriter writer) => Reset(writer);
-
-        public void Reset(NetworkWriter writer)
+        public BitWriter(int bufferSize) : this(new byte[bufferSize]) { }
+        public BitWriter(byte[] buffer)
         {
-            scratch = 0;
-            bitsInScratch = 0;
-            this.writer = writer;
+            this.buffer = buffer;
+        }
+
+        public void Reset()
+        {
+            this.scratch = 0;
+            this.bitsInScratch = 0;
+            // +1 because last might not be full word
+            Array.Clear(this.buffer, 0, this.writeCount);
+            this.writeCount = 0;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -32,150 +39,86 @@ namespace JamesFrowen.BitPacking
                 throw new ArgumentException($"bits must be less than {WriteSize}");
             }
 
-            ulong mask = (1ul << bits) - 1;
-            ulong longValue = value & mask;
+            var mask = (1ul << bits) - 1;
+            var longValue = value & mask;
 
-            scratch |= (longValue << bitsInScratch);
+            this.scratch |= (longValue << this.bitsInScratch);
 
-            bitsInScratch += bits;
+            this.bitsInScratch += bits;
 
 
-            if (bitsInScratch >= WriteSize)
+            if (this.bitsInScratch >= WriteSize)
             {
-                uint toWrite = (uint)scratch;
-                writer.WriteBlittable(toWrite);
+                var toWrite = (uint)this.scratch;
+                this.write32bitToBuffer(toWrite);
 
-                scratch >>= WriteSize;
-                bitsInScratch -= WriteSize;
+                this.scratch >>= WriteSize;
+                this.bitsInScratch -= WriteSize;
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Flush()
         {
-            if (bitsInScratch > 24)
+            var toWrite = (uint)this.scratch;
+            if (this.bitsInScratch > 24)
             {
-                uint toWrite = (uint)scratch;
-                writer.WriteBlittable(toWrite);
+                this.write32bitToBuffer(toWrite);
             }
-            else if (bitsInScratch > 16)
+            else if (this.bitsInScratch > 16)
             {
-                ushort toWrite1 = (ushort)scratch;
-                byte toWrite2 = (byte)(scratch >> 16);
-                writer.WriteBlittable(toWrite1);
-                writer.WriteBlittable(toWrite2);
+                this.write24bitToBuffer(toWrite);
             }
-            else if (bitsInScratch > 8)
+            else if (this.bitsInScratch > 8)
             {
-                ushort toWrite = (ushort)scratch;
-                writer.WriteBlittable(toWrite);
+                this.write16bitToBuffer(toWrite);
             }
-            else if (bitsInScratch > 0)
+            else if (this.bitsInScratch > 0)
             {
-                byte toWrite = (byte)scratch;
-                writer.WriteBlittable(toWrite);
+                this.write8bitToBuffer(toWrite);
             }
+
+            // set to 0 incase flush is called twice
+            this.bitsInScratch = 0;
         }
-    }
-
-    public class BitReader
-    {
-        private const int ReadSize = 32;
-
-        NetworkReader reader;
-
-        ulong scratch;
-        int bitsInScratch;
-        int numberOfFullScratches;
-        int extraBytesInLastScratch;
-
-        public int BitsInScratch => bitsInScratch;
-
-        public BitReader() { }
-        public BitReader(NetworkReader reader) => Reset(reader);
-
-        public void Reset(NetworkReader reader)
+        public ArraySegment<byte> ToSegment()
         {
-            this.reader = reader;
-
-            scratch = 0;
-            bitsInScratch = 0;
-
-            int total_bytes = reader.Length;
-            numberOfFullScratches = total_bytes / sizeof(int);
-            extraBytesInLastScratch = total_bytes - (numberOfFullScratches * sizeof(int));
+            this.Flush();
+            return new ArraySegment<byte>(this.buffer, 0, this.writeCount);
         }
 
-        public uint Read(int bits)
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void write32bitToBuffer(uint toWrite)
         {
-            if (bits > ReadSize)
-            {
-                throw new ArgumentException($"bits must be less than {ReadSize}");
-            }
-
-            if (bits > bitsInScratch)
-            {
-                ReadScratch(out uint newValue, out int count);
-                scratch |= ((ulong)newValue << bitsInScratch);
-
-                bitsInScratch += count;
-            }
-
-
-            // read bits from scatch
-            ulong mask = (1ul << bits) - 1;
-            ulong value = scratch & mask;
-
-
-            // remove bits from scatch
-            scratch >>= bits;
-            bitsInScratch -= bits;
-
-            return (uint)value;
+            this.buffer[this.writeCount] = (byte)(toWrite);
+            this.buffer[this.writeCount + 1] = (byte)(toWrite >> 8);
+            this.buffer[this.writeCount + 2] = (byte)(toWrite >> 16);
+            this.buffer[this.writeCount + 2] = (byte)(toWrite >> 24);
+            this.writeCount += 4;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void ReadScratch(out uint newBits, out int count)
+        private void write24bitToBuffer(uint toWrite)
         {
-            if (numberOfFullScratches > 0)
-            {
-                newBits = reader.ReadBlittable<uint>();
-                numberOfFullScratches--;
-                count = ReadSize;
-            }
-            else
-            {
-                if (extraBytesInLastScratch == 0)
-                {
-                    throw new EndOfStreamException($"No bits left to read");
-                }
+            this.buffer[this.writeCount] = (byte)(toWrite);
+            this.buffer[this.writeCount + 1] = (byte)(toWrite >> 8);
+            this.buffer[this.writeCount + 2] = (byte)(toWrite >> 16);
+            this.writeCount += 4;
+        }
 
-                if (extraBytesInLastScratch > 3)
-                {
-                    newBits = reader.Read<uint>();
-                    count = 32;
-                }
-                else if (extraBytesInLastScratch > 2)
-                {
-                    ushort newBits1 = reader.Read<ushort>();
-                    byte newBits2 = reader.Read<byte>();
-                    newBits = newBits1 + ((uint)newBits2 << 16);
-                    count = 24;
-                }
-                else if (extraBytesInLastScratch > 1)
-                {
-                    newBits = reader.Read<ushort>();
-                    count = 16;
-                }
-                else
-                {
-                    newBits = reader.Read<byte>();
-                    count = 8;
-                }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void write16bitToBuffer(uint toWrite)
+        {
+            this.buffer[this.writeCount] = (byte)(toWrite);
+            this.buffer[this.writeCount + 1] = (byte)(toWrite >> 8);
+            this.writeCount += 4;
+        }
 
-                // set to 0 after reading
-                extraBytesInLastScratch = 0;
-            }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void write8bitToBuffer(uint toWrite)
+        {
+            this.buffer[this.writeCount] = (byte)(toWrite);
+            this.writeCount += 4;
         }
     }
 }
