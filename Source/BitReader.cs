@@ -18,6 +18,8 @@ namespace JamesFrowen.BitPacking
 
         public int BitsInScratch => this.bitsInScratch;
 
+        public int Position => this.readOffset;
+
         public BitReader(byte[] buffer, int offset, int byteLength)
         {
             this.buffer = buffer;

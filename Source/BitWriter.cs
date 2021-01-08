@@ -15,6 +15,8 @@ namespace JamesFrowen.BitPacking
         ulong scratch;
         int bitsInScratch;
 
+        public int Length => this.writeCount;
+
         public BitWriter(int bufferSize) : this(new byte[bufferSize]) { }
         public BitWriter(byte[] buffer)
         {

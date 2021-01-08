@@ -5,6 +5,7 @@ namespace JamesFrowen.BitPacking.Tests
 {
     public class BitWriterTest
     {
+        private const int BufferSize = 1000;
         const int max = (1 << 10) - 1;
 
         [Test]
@@ -13,7 +14,7 @@ namespace JamesFrowen.BitPacking.Tests
         {
             var inValue = (uint)Random.Range(0, int.MaxValue);
 
-            var writer = new BitWriter(1000);
+            var writer = new BitWriter(BufferSize);
 
             writer.Write(inValue, 32);
 
@@ -34,7 +35,7 @@ namespace JamesFrowen.BitPacking.Tests
             var inValue2 = (uint)Random.Range(0, max);
             var inValue3 = (uint)Random.Range(0, max);
 
-            var writer = new BitWriter(netWriter);
+            var writer = new BitWriter(BufferSize);
 
             writer.Write(inValue1, 10);
             writer.Write(inValue2, 10);
@@ -42,7 +43,7 @@ namespace JamesFrowen.BitPacking.Tests
 
             writer.Flush();
 
-            var reader = new BitReader(netReader);
+            var reader = new BitReader(writer.ToSegment());
 
             var outValue1 = reader.Read(10);
             var outValue2 = reader.Read(10);
@@ -66,7 +67,7 @@ namespace JamesFrowen.BitPacking.Tests
             var inValue7 = (uint)Random.Range(0, max);
             var inValue8 = (uint)Random.Range(0, max);
 
-            var writer = new BitWriter(netWriter);
+            var writer = new BitWriter(BufferSize);
 
             writer.Write(inValue1, 10);
             writer.Write(inValue2, 10);
@@ -79,7 +80,7 @@ namespace JamesFrowen.BitPacking.Tests
 
             writer.Flush();
 
-            var reader = new BitReader(netReader);
+            var reader = new BitReader(writer.ToSegment());
 
             var outValue1 = reader.Read(10);
             var outValue2 = reader.Read(10);
@@ -106,7 +107,7 @@ namespace JamesFrowen.BitPacking.Tests
         [TestCase(360u, 454u, 105u, 949u, 194u, 312u, 272u, 350u)]
         public void CanWrite8MultipleValues(uint inValue1, uint inValue2, uint inValue3, uint inValue4, uint inValue5, uint inValue6, uint inValue7, uint inValue8)
         {
-            var writer = new BitWriter(netWriter);
+            var writer = new BitWriter(BufferSize);
 
             writer.Write(inValue1, 10);
             writer.Write(inValue2, 10);
@@ -119,7 +120,7 @@ namespace JamesFrowen.BitPacking.Tests
 
             writer.Flush();
 
-            var reader = new BitReader(netReader);
+            var reader = new BitReader(writer.ToSegment());
 
             var outValue1 = reader.Read(10);
             Assert.That(outValue1, Is.EqualTo(inValue1), $"Failed [{inValue1},{inValue2},{inValue3},{inValue4},{inValue5},{inValue6},{inValue7},{inValue8}]");
