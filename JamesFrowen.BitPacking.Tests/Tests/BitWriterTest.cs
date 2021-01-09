@@ -16,6 +16,80 @@ namespace JamesFrowen.BitPacking.Tests
         }
 
         [Test]
+        public void WritesCorrectBits()
+        {
+            uint bits1 = 0b1011;
+            uint bits2 = 0b10_0111_1001;
+            var expected1 = (byte)bits1;
+            byte expected2_1 = 0b1001_1011;
+            byte expected2_2 = 0b10_0111;
+
+
+            var writer = new BitWriter(BufferSize);
+
+
+            {
+                Assert.That(writer.Length, Is.Zero, "Should start at length 0");
+                writer.Write(bits1, 4);
+
+                Assert.That(writer.Length, Is.EqualTo(1), "should have length 1 after writing 4 bits");
+
+                var segment = writer.ToArraySegment();
+                Assert.That(segment.Offset, Is.Zero, "segment sould be at start of array");
+                Assert.That(segment.Count, Is.EqualTo(1), "segment length should by 1 after writing 4 bits");
+                var first = segment.Array[0];
+
+                Assert.That(first, Is.EqualTo(expected1));
+            }
+
+            {
+                writer.Write(bits2, 10);
+                Assert.That(writer.Length, Is.EqualTo(2), "should have length 2 after writing 14 bits");
+
+                var segment = writer.ToArraySegment();
+                Assert.That(segment.Offset, Is.Zero, "segment should be at start of array");
+                Assert.That(segment.Count, Is.EqualTo(2), "segment length should by 2 after writing 14 bits");
+                var first = segment.Array[0];
+                var second = segment.Array[1];
+
+                Assert.That(first, Is.EqualTo(expected2_1));
+                Assert.That(second, Is.EqualTo(expected2_2));
+            }
+        }
+
+        [Test]
+        public void ReadsCorrectBits()
+        {
+            // numbers from WritesCorrectBits
+            var buffers = new byte[10];
+            buffers[0] = 0b1001_1011;
+            buffers[1] = 0b10_0111;
+
+            uint expected1 = 0b1011;
+            var count1 = 4;
+            uint expected2 = 0b10_0111_1001;
+            var count2 = 10;
+
+            var reader = new BitReader(buffers, 0, 2);
+
+            {
+                var value = reader.Read(count1);
+                Assert.That(reader.Position, Is.Zero, "position should be 0 untill whole of first byte has been read");
+                Assert.That(reader.BitPosition, Is.EqualTo(count1));
+
+                Assert.That(value, Is.EqualTo(expected1));
+            }
+
+            {
+                var value = reader.Read(count2);
+                Assert.That(reader.Position, Is.EqualTo(1), "position should be 1 after reading first whole byte");
+                Assert.That(reader.BitPosition, Is.EqualTo(count1 + count2));
+
+                Assert.That(value, Is.EqualTo(expected2));
+            }
+        }
+
+        [Test]
         [Repeat(1000)]
         public void CanWrite32BitsRepeat()
         {
@@ -24,8 +98,6 @@ namespace JamesFrowen.BitPacking.Tests
             var writer = new BitWriter(BufferSize);
 
             writer.Write(inValue, 32);
-
-            writer.Flush();
 
             var reader = new BitReader(writer.ToArraySegment());
 
@@ -47,8 +119,6 @@ namespace JamesFrowen.BitPacking.Tests
             writer.Write(inValue1, 10);
             writer.Write(inValue2, 10);
             writer.Write(inValue3, 10);
-
-            writer.Flush();
 
             var reader = new BitReader(writer.ToArraySegment());
 
@@ -84,8 +154,6 @@ namespace JamesFrowen.BitPacking.Tests
             writer.Write(inValue6, 10);
             writer.Write(inValue7, 10);
             writer.Write(inValue8, 10);
-
-            writer.Flush();
 
             var reader = new BitReader(writer.ToArraySegment());
 
@@ -124,8 +192,6 @@ namespace JamesFrowen.BitPacking.Tests
             writer.Write(inValue6, 10);
             writer.Write(inValue7, 10);
             writer.Write(inValue8, 10);
-
-            writer.Flush();
 
             var reader = new BitReader(writer.ToArraySegment());
 

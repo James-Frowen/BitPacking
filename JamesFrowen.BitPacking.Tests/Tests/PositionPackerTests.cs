@@ -9,12 +9,15 @@ namespace JamesFrowen.BitPacking.Tests
     {
         private const int BufferSize = 1000;
 
-        static IEnumerable CompressesAndDecompressesCases()
+        static TestCaseData[] CompressesAndDecompressesCases()
         {
-            yield return new TestCaseData(new Vector3(0, 0, 0), new Vector3(100, 100, 100), 0.01f, new Vector3(0, 0, 0));
-            yield return new TestCaseData(new Vector3(0, 0, 0), new Vector3(100, 100, 100), 0.01f, new Vector3(20, 20, 20));
-            yield return new TestCaseData(new Vector3(0, 0, 0), new Vector3(100, 100, 100), 0.01f, new Vector3(50, 50, 50));
-            yield return new TestCaseData(new Vector3(0, 0, 0), new Vector3(100, 100, 100), 0.01f, new Vector3(100, 100, 100));
+            return new TestCaseData[]
+            {
+                new TestCaseData(new Vector3(0, 0, 0), new Vector3(100, 100, 100), 0.01f, new Vector3(0, 0, 0)),
+                new TestCaseData(new Vector3(0, 0, 0), new Vector3(100, 100, 100), 0.01f, new Vector3(20, 20, 20)),
+                new TestCaseData(new Vector3(0, 0, 0), new Vector3(100, 100, 100), 0.01f, new Vector3(50, 50, 50)),
+                new TestCaseData(new Vector3(0, 0, 0), new Vector3(100, 100, 100), 0.01f, new Vector3(100, 100, 100))
+            };
         }
 
         [Test]
@@ -25,7 +28,6 @@ namespace JamesFrowen.BitPacking.Tests
 
             var writer = new BitWriter(BufferSize);
             packer.Pack(writer, inValue);
-            writer.Flush();
 
             var reader = new BitReader(writer.ToArraySegment());
             var outValue = packer.Unpack(reader);
@@ -46,7 +48,6 @@ namespace JamesFrowen.BitPacking.Tests
 
             var writer = new BitWriter(BufferSize);
             packer.Pack(writer, inValue);
-            writer.Flush();
 
             Assert.That(writer.Length, Is.EqualTo(writeCount));
         }
@@ -60,7 +61,6 @@ namespace JamesFrowen.BitPacking.Tests
 
             var writer = new BitWriter(BufferSize);
             packer.Pack(writer, inValue);
-            writer.Flush();
 
             var reader = new BitReader(writer.ToArraySegment());
             var outValue = packer.Unpack(reader);

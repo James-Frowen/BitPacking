@@ -83,7 +83,6 @@ namespace JamesFrowen.BitPacking.Tests
 
             var writer = new BitWriter(BufferSize);
             packer.Pack(writer, inValue);
-            writer.Flush();
 
             var reader = new BitReader(writer.ToArraySegment());
             var outValue = packer.Unpack(reader);
@@ -153,7 +152,6 @@ namespace JamesFrowen.BitPacking.Tests
         {
             var writer = new BitWriter(BufferSize);
             packer.Pack(writer, inValue);
-            writer.Flush();
 
             var reader = new BitReader(writer.ToArraySegment());
             return packer.Unpack(reader);

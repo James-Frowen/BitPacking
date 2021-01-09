@@ -1,5 +1,6 @@
 using System;
 using System.Runtime.CompilerServices;
+using UnityEngine;
 
 namespace JamesFrowen.BitPacking
 {
@@ -8,15 +9,22 @@ namespace JamesFrowen.BitPacking
         // todo allow this to work with pooling
         // todo try writing to buffer directly instead of using scratch
 
-        private const int WriteSize = 32;
+        // todo do we need this max write size?
+        private const int MaxWriteSize = 32;
 
-        byte[] buffer;
-        int writeCount;
+        readonly byte[] buffer;
 
-        ulong scratch;
-        int bitsInScratch;
+        /// <summary>
+        /// next byte to write to
+        /// <para>index in buffer</para>
+        /// </summary>
+        int writeByte;
+        /// <summary>
+        /// next bit to write to inside writeByte
+        /// </summary>
+        int writeBit;
 
-        public int Length => this.writeCount;
+        public int Length => this.writeByte + Mathf.CeilToInt(this.writeBit / 8f);
 
         public BitWriter(int bufferSize) : this(new byte[bufferSize]) { }
         public BitWriter(byte[] buffer)
@@ -26,102 +34,51 @@ namespace JamesFrowen.BitPacking
 
         public void Reset()
         {
-            this.scratch = 0;
-            this.bitsInScratch = 0;
+            this.writeByte = 0;
+            this.writeBit = 0;
             // +1 because last might not be full word
-            Array.Clear(this.buffer, 0, this.writeCount);
-            this.writeCount = 0;
+            Array.Clear(this.buffer, 0, this.writeByte + 1);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Write(uint value, int bits)
+        public void Write(uint inValue, int inBits)
         {
             //Console.WriteLine($"{value},{bits}");
-            if (bits > WriteSize)
+            if (inBits > MaxWriteSize)
             {
-                throw new ArgumentException($"bits must be less than {WriteSize}");
+                throw new ArgumentException($"bits must be less than {MaxWriteSize}");
             }
 
-            var mask = (1ul << bits) - 1;
-            var longValue = value & mask;
-
-            this.scratch |= (longValue << this.bitsInScratch);
-
-            this.bitsInScratch += bits;
-
-
-            if (this.bitsInScratch >= WriteSize)
+            do
             {
-                var toWrite = (uint)this.scratch;
-                this.write32bitToBuffer(toWrite);
+                // shift value and add to array
+                this.buffer[this.writeByte] |= (byte)(inValue << this.writeBit);
 
-                this.scratch >>= WriteSize;
-                this.bitsInScratch -= WriteSize;
+                // caclulate how many bits were written
+                var written = Math.Min(inBits, 8 - this.writeBit);
+                // keep track of bits in buffer/incoming
+                this.writeBit += written;
+                inBits -= written;
+
+                // shift incoming
+                inValue >>= written;
+
+                // if writeBit is at end of byte, then increment byte
+                if (this.writeBit >= 8)
+                {
+                    Debug.Assert(this.writeBit > 8, "WriteBits should never be more than 8");
+                    this.writeBit = 0;
+                    this.writeByte++;
+                }
+
+                // keep going if there are still inbits to write
             }
+            while (inBits > 0);
         }
 
-        public void Flush()
-        {
-            var toWrite = (uint)this.scratch;
-            if (this.bitsInScratch > 24)
-            {
-                this.write32bitToBuffer(toWrite);
-            }
-            else if (this.bitsInScratch > 16)
-            {
-                this.write24bitToBuffer(toWrite);
-            }
-            else if (this.bitsInScratch > 8)
-            {
-                this.write16bitToBuffer(toWrite);
-            }
-            else if (this.bitsInScratch > 0)
-            {
-                this.write8bitToBuffer(toWrite);
-            }
-
-            // set to 0 incase flush is called twice
-            this.bitsInScratch = 0;
-        }
         public ArraySegment<byte> ToArraySegment()
         {
-            this.Flush();
-            return new ArraySegment<byte>(this.buffer, 0, this.writeCount);
-        }
-
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void write32bitToBuffer(uint toWrite)
-        {
-            this.buffer[this.writeCount] = (byte)(toWrite);
-            this.buffer[this.writeCount + 1] = (byte)(toWrite >> 8);
-            this.buffer[this.writeCount + 2] = (byte)(toWrite >> 16);
-            this.buffer[this.writeCount + 3] = (byte)(toWrite >> 24);
-            this.writeCount += 4;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void write24bitToBuffer(uint toWrite)
-        {
-            this.buffer[this.writeCount] = (byte)(toWrite);
-            this.buffer[this.writeCount + 1] = (byte)(toWrite >> 8);
-            this.buffer[this.writeCount + 2] = (byte)(toWrite >> 16);
-            this.writeCount += 3;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void write16bitToBuffer(uint toWrite)
-        {
-            this.buffer[this.writeCount] = (byte)(toWrite);
-            this.buffer[this.writeCount + 1] = (byte)(toWrite >> 8);
-            this.writeCount += 2;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void write8bitToBuffer(uint toWrite)
-        {
-            this.buffer[this.writeCount] = (byte)(toWrite);
-            this.writeCount += 1;
+            return new ArraySegment<byte>(this.buffer, 0, this.Length);
         }
     }
 }
