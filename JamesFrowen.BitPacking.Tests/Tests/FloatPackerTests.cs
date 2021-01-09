@@ -8,6 +8,8 @@ namespace JamesFrowen.BitPacking.Tests
     {
         private const int BufferSize = 1000;
 
+        TestRandom random = new TestRandom();
+
         static IEnumerable CompressesAndDecompressesCases()
         {
             yield return new TestCaseData(1269679f, 0.1005143f, 558430.4f);

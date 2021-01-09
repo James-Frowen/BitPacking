@@ -9,7 +9,9 @@ namespace JamesFrowen.BitPacking.Tests
     {
         private const int BufferSize = 1000;
 
-        static TestCaseData[] CompressesAndDecompressesCases()
+        TestRandom random = new TestRandom();
+
+        static TestCaseData[] PackAndUnpackCases()
         {
             return new TestCaseData[]
             {
@@ -21,7 +23,7 @@ namespace JamesFrowen.BitPacking.Tests
         }
 
         [Test]
-        [TestCaseSource(nameof(CompressesAndDecompressesCases))]
+        [TestCaseSource(nameof(PackAndUnpackCases))]
         public void PackAndUnpack(Vector3 min, Vector3 max, float precision, Vector3 inValue)
         {
             var packer = new PositionPacker(min, max, precision);
@@ -40,7 +42,7 @@ namespace JamesFrowen.BitPacking.Tests
 
 
         [Test]
-        [TestCaseSource(nameof(CompressesAndDecompressesCases))]
+        [TestCaseSource(nameof(PackAndUnpackCases))]
         public void PackHasCorrectLength(Vector3 min, Vector3 max, float precision, Vector3 inValue)
         {
             var packer = new PositionPacker(min, max, precision);
@@ -53,7 +55,7 @@ namespace JamesFrowen.BitPacking.Tests
         }
 
         [Test]
-        [TestCaseSource(nameof(CompressesAndDecompressesCases))]
+        [TestCaseSource(nameof(PackAndUnpackCases))]
         public void UnpackHasCorrectLength(Vector3 min, Vector3 max, float precision, Vector3 inValue)
         {
             var packer = new PositionPacker(min, max, precision);
@@ -86,11 +88,7 @@ namespace JamesFrowen.BitPacking.Tests
         [TestCaseSource(nameof(CompressesAndDecompressesCasesRepeat))]
         public void PackAndUnpackRepeat(Vector3 min, Vector3 max, float precision)
         {
-            var inValue = new Vector3(
-                UnityEngine.Random.Range(min.x, max.x),
-                UnityEngine.Random.Range(min.y, max.y),
-                UnityEngine.Random.Range(min.z, max.z)
-                );
+            var inValue = this.random.Vector3(min, max);
 
             this.PackAndUnpack(min, max, precision, inValue);
             this.PackHasCorrectLength(min, max, precision, inValue);

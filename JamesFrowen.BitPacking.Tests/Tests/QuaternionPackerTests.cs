@@ -11,6 +11,8 @@ namespace JamesFrowen.BitPacking.Tests
     {
         private const int BufferSize = 1000;
 
+        TestRandom random = new TestRandom();
+
         static float Precision(int bits)
         {
             // sqrt2 / range * 3
@@ -125,7 +127,7 @@ namespace JamesFrowen.BitPacking.Tests
         [Ignore("Requires mirror")]
         public void PackerGivesSameValuesAsCompression()
         {
-            var inValue = UnityEngine.Random.rotation;
+            var inValue = this.random.Quaternion();
             var packer = new QuaternionPacker(10);
             var outValuePacked = PackUnpack(inValue, packer);
             var outValueCompressed = CompressDecompress(inValue);
