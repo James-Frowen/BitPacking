@@ -1,20 +1,12 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net5.0</TargetFramework>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
 
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="Source\**" />
-    <EmbeddedResource Remove="Source\**" />
-    <None Remove="Source\**" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Remove=".gitignore" />
-    <None Remove="README.md" />
     <None Remove="**/*.meta" />
     <None Remove="**/*.asmdef" />
   </ItemGroup>
@@ -26,7 +18,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="JamesFrowen.BitPacking.csproj" />
+    <ProjectReference Include="..\JamesFrowen.BitPacking\JamesFrowen.BitPacking.csproj" />
   </ItemGroup>
 
   <ItemGroup>
