@@ -1,5 +1,4 @@
 ﻿using System;
-using UnityEngine;
 
 namespace JamesFrowen.BitPacking
 {
@@ -14,12 +13,11 @@ namespace JamesFrowen.BitPacking
         readonly int startOffset;
         readonly int endLength;
 
-        int readByte;
         int readBit;
 
-        public int Position => this.readByte;
+        public int Position => this.readBit / 8;
 
-        public int BitPosition => this.readByte * 8 + this.readBit;
+        public int BitPosition => this.readBit;
 
         public BitReader(byte[] buffer, int offset, int byteLength)
         {
@@ -30,45 +28,28 @@ namespace JamesFrowen.BitPacking
 
         public BitReader(ArraySegment<byte> arraySegment) : this(arraySegment.Array, arraySegment.Offset, arraySegment.Count) { }
 
-        public uint Read(int inBits)
+        public unsafe uint Read(int inBits)
         {
             if (inBits > MaxReadSize)
             {
                 throw new ArgumentException($"bits must be less than {MaxReadSize}");
             }
 
-            uint outValue = 0;
-            var shiftOut = 0;
-            do
+            fixed (byte* ptr = &this.buffer[this.readBit / 8])
             {
-                // caclulate how many bits to read
-                var toRead = Math.Min(inBits, 8 - this.readBit);
+                var longPtr = (ulong*)ptr;
+                // get bufferValue
+                var v = *longPtr;
 
-                uint bufferValue = this.buffer[this.startOffset + this.readByte];
-                // shift to 0
-                bufferValue >>= this.readBit;
-                var mask = ((1u << toRead) - 1);
-                bufferValue &= mask;
+                var shiftBits = this.readBit % 8;
+                v >>= shiftBits;
 
-                outValue |= (bufferValue << shiftOut);
-                shiftOut += toRead;
+                var mask = ((1ul << inBits) - 1);
+                v &= mask;
 
-                this.readBit += toRead;
-                inBits -= toRead;
-
-                // if writeBit is at end of byte, then increment byte
-                if (this.readBit >= 8)
-                {
-                    Debug.Assert(this.readBit > 8, "WriteBits should never be more than 8");
-                    this.readBit = 0;
-                    this.readByte++;
-                }
-
-                // keep going if there are still inbits to write
+                this.readBit += inBits;
+                return (uint)v;
             }
-            while (inBits > 0);
-
-            return outValue;
         }
     }
 }
