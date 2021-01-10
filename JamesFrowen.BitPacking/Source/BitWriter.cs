@@ -13,7 +13,6 @@ namespace JamesFrowen.BitPacking
         byte[] managedBuffer;
         byte* ptr;
         ulong* ulongPtr;
-        uint* uintPtr;
         readonly int bufferSize;
         readonly int bufferSizeBits;
 
@@ -31,7 +30,6 @@ namespace JamesFrowen.BitPacking
             var voidPtr = NewUnmanaged(bufferSize);
             this.ptr = (byte*)voidPtr;
             this.ulongPtr = (ulong*)voidPtr;
-            this.uintPtr = (uint*)voidPtr;
             this.managedBuffer = new byte[bufferSize];
         }
 
@@ -70,9 +68,25 @@ namespace JamesFrowen.BitPacking
             if (endCount > this.bufferSizeBits) { throw new EndOfStreamException(); }
 
             var mask = (1ul << inBits) - 1;
-            var value = (mask & inValue) << (this.writeBit & 0b1_1111);
+            var maskedValue = mask & inValue;
+            // writeBit= 188
+            // remainder = 60
+            var remainder = this.writeBit & 0b11_1111;
+            // true
+            var isOver32 = (remainder >> 5) == 1;
 
-            *(ulong*)(this.uintPtr + (this.writeBit >> 5)) |= value;
+            // shifted 60, only writes first 4 bits
+            var value = maskedValue << remainder;
+            // write first 4 to first ulong
+            *(this.ulongPtr + (this.writeBit >> 6)) |= value;
+
+            if (isOver32)
+            {
+                // shift to remove first 4
+                var v2 = maskedValue >> (64 - remainder);
+                // write rest to second ulong
+                *(this.ulongPtr + (this.writeBit >> 6) + 1) |= v2;
+            }
 
             this.writeBit = endCount;
         }

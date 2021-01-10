@@ -52,20 +52,24 @@ namespace Mirror.Benchmark
                 foreach (var writeSize in writeSizes)
                 {
                     var lowest = double.MaxValue;
-                    double avg = 0;
                     WriterType lowestType = default;
                     var values = new List<double>();
+                    double sum = 0;
+                    var count = 0;
                     foreach (var type in writerTypes)
                     {
+                        if (type == WriterType.BaseLine) { continue; }
                         var value = data[type][bufferSize][writeSize];
                         values.Add(value);
-                        avg += value / writerTypes.Length;
+                        sum += value;
+                        count++;
                         if (value < lowest)
                         {
                             lowest = value;
                             lowestType = type;
                         }
                     }
+                    var avg = sum / count;
 
                     list.Add(new ProcessedData
                     {
@@ -153,12 +157,14 @@ namespace Mirror.Benchmark
     }
     public enum WriterType
     {
+        BaseLine,
         Scratch1,
         Scratch2,
         NoScratch5,
         NoScratch10,
         NoScratch11,
         NoScratch12,
+        NoScratch13,
         //Blittable,
     }
     public class Performance1
@@ -186,12 +192,14 @@ namespace Mirror.Benchmark
                 //};
                 var writeSizes = Enumerable.Range(1, 32).ToArray();
                 var writerTypes = new WriterType[] {
+                    WriterType.BaseLine,
                     //WriterType.Scratch1,
                     WriterType.Scratch2,
                     WriterType.NoScratch5,
                     //WriterType.NoScratch10,
                     WriterType.NoScratch11,
                     WriterType.NoScratch12,
+                    WriterType.NoScratch13,
                 };
                 foreach (var bufferSize in bufferSizes)
                 {
@@ -243,6 +251,20 @@ namespace Mirror.Benchmark
             {
                 default:
                     throw new InvalidEnumArgumentException();
+                case WriterType.BaseLine:
+                    {
+                        var writer = new BitWriter_Nothing(bufferSize);
+                        writer.Reset();
+                        writeSome = () =>
+                        {
+                            var start = Stopwatch.GetTimestamp();
+                            this.WriteSome(writer);
+                            var end = Stopwatch.GetTimestamp();
+                            writer.Reset();
+                            return end - start;
+                        };
+                        break;
+                    }
                 case WriterType.Scratch1:
                     {
                         var writer = new BitWriter_scratch1(bufferSize);
@@ -329,6 +351,20 @@ namespace Mirror.Benchmark
                         };
                         break;
                     }
+                case WriterType.NoScratch13:
+                    {
+                        var writer = new BitWriter_NoScratch13(bufferSize);
+                        writer.Reset();
+                        writeSome = () =>
+                        {
+                            var start = Stopwatch.GetTimestamp();
+                            this.WriteSome(writer);
+                            var end = Stopwatch.GetTimestamp();
+                            writer.Reset();
+                            return end - start;
+                        };
+                        break;
+                    }
                     //case WriterType.Blittable:
                     //    {
                     //        PooledNetworkWriter writer = new PooledNetworkWriter();
@@ -370,6 +406,13 @@ namespace Mirror.Benchmark
             this.data[writerType][bufferSize][writeSize] = elapsed;
         }
 
+        private void WriteSome(BitWriter_Nothing writer)
+        {
+            for (var i = 0; i < writeCount; i++)
+            {
+                writer.Write((uint)i, writeSize);
+            }
+        }
 
         void WriteSome(BitWriter_NoScratch5 writer)
         {
@@ -413,6 +456,28 @@ namespace Mirror.Benchmark
             {
                 writer.Write((uint)i, writeSize);
             }
+        }
+        void WriteSome(BitWriter_NoScratch13 writer)
+        {
+            for (var i = 0; i < writeCount; i++)
+            {
+                writer.Write((uint)i, writeSize);
+            }
+        }
+    }
+    public class BitWriter_Nothing
+    {
+        public BitWriter_Nothing(int bufferSize)
+        {
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Write(uint i, int writeSize)
+        {
+        }
+
+        public void Reset()
+        {
         }
     }
 }
@@ -540,6 +605,9 @@ namespace JamesFrowen.BitPacking
             return new ArraySegment<byte>(this.managedBuffer, 0, length);
         }
     }
+    /// <summary>
+    /// Fastest, but fails tests
+    /// </summary>
     public unsafe class BitWriter_NoScratch11
     {
         // todo allow this to work with pooling
@@ -618,6 +686,9 @@ namespace JamesFrowen.BitPacking
         }
     }
 
+    /// <summary>
+    /// slower but fails tests
+    /// </summary>
     public unsafe class BitWriter_NoScratch12
     {
 
@@ -684,6 +755,101 @@ namespace JamesFrowen.BitPacking
             var value = (mask & inValue) << (this.writeBit & 0b1_1111);
 
             *(ulong*)(this.uintPtr + (this.writeBit >> 5)) |= value;
+
+            this.writeBit = endCount;
+        }
+
+        public ArraySegment<byte> ToArraySegment()
+        {
+            var length = this.Length;
+            for (var i = 0; i < length; i++)
+                this.managedBuffer[i] = *(this.ptr + i);
+            return new ArraySegment<byte>(this.managedBuffer, 0, length);
+        }
+    }
+
+    /// <summary>
+    /// Based on 11, but passes tests
+    /// </summary>
+    public unsafe class BitWriter_NoScratch13
+    {
+        // todo allow this to work with pooling
+
+        byte[] managedBuffer;
+        byte* ptr;
+        ulong* ulongPtr;
+        readonly int bufferSize;
+        readonly int bufferSizeBits;
+
+        /// <summary>
+        /// next bit to write to inside writeByte
+        /// </summary>
+        int writeBit;
+
+        public int Length => Mathf.CeilToInt(this.writeBit / 8f);
+
+        public BitWriter_NoScratch13(int bufferSize)
+        {
+            this.bufferSize = bufferSize;
+            this.bufferSizeBits = bufferSize * 8;
+            var voidPtr = NewUnmanaged(bufferSize);
+            this.ptr = (byte*)voidPtr;
+            this.ulongPtr = (ulong*)voidPtr;
+            this.managedBuffer = new byte[bufferSize];
+        }
+
+        static void* NewUnmanaged(int elementCount)
+        {
+            var newSizeInBytes = elementCount;
+            var newArrayPointer = (byte*)Marshal.AllocHGlobal(newSizeInBytes).ToPointer();
+
+            ClearUnmanged(newArrayPointer, newSizeInBytes);
+
+            return newArrayPointer;
+        }
+
+        static void ClearUnmanged(byte* ptr, int count)
+        {
+            for (var i = 0; i < count; i++)
+                *(ptr + i) = 0;
+        }
+
+        public void Reset()
+        {
+            Array.Clear(this.managedBuffer, 0, this.Length);
+            ClearUnmanged(this.ptr, this.Length);
+            this.writeBit = 0;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Write(uint inValue, int inBits)
+        {
+            if (inBits == 0) { throw new ArgumentException("inBits should not be zero", nameof(inBits)); }
+
+            const int MaxWriteSize = 32;
+            if (inBits > MaxWriteSize) { throw new ArgumentException($"inBits should not be greater than {MaxWriteSize}", nameof(inBits)); }
+
+            var endCount = this.writeBit + inBits;
+            if (endCount > this.bufferSizeBits) { throw new EndOfStreamException(); }
+
+            var mask = (1ul << inBits) - 1;
+            var maskedValue = mask & inValue;
+            // writeBit= 188
+            // remainder = 60
+            var remainder = this.writeBit & 0b11_1111;
+            // true
+            var isOver32 = (remainder >> 5) == 1;
+
+            // shifted 60, only writes first 4 bits
+            var value = maskedValue << remainder;
+            *(this.ulongPtr + (this.writeBit >> 6)) |= value;
+
+            if (isOver32)
+            {
+                // shift 
+                var v2 = maskedValue >> (64 - remainder);
+                *(this.ulongPtr + (this.writeBit >> 6) + 1) |= v2;
+            }
 
             this.writeBit = endCount;
         }
