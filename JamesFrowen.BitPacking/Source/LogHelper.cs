@@ -1,10 +1,11 @@
 using System;
-using UnityEngine;
 
 namespace JamesFrowen.BitPacking
 {
     public static class LogHelper
     {
+        public static Action<string> Log = Console.WriteLine;
+
         public static void LogBits(uint n)
         {
             var builder = new System.Text.StringBuilder();
@@ -15,7 +16,7 @@ namespace JamesFrowen.BitPacking
                 builder.Append(masked);
             }
 
-            Debug.Log(builder.ToString());
+            Log(builder.ToString());
         }
 
         public static void LogBits(ulong n)
@@ -28,7 +29,7 @@ namespace JamesFrowen.BitPacking
                 builder.Append(masked);
             }
 
-            Debug.Log(builder.ToString());
+            Log(builder.ToString());
         }
 
         public static void LogHex(ArraySegment<byte> segment)
@@ -36,7 +37,7 @@ namespace JamesFrowen.BitPacking
 
         public static void LogHex(byte[] bytes, int? offset = null, int? count = null)
         {
-            Debug.Log(BitConverter.ToString(bytes, offset ?? 0, count ?? bytes.Length));
+            Log(BitConverter.ToString(bytes, offset ?? 0, count ?? bytes.Length));
         }
     }
 }

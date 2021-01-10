@@ -1,4 +1,5 @@
 using NUnit.Framework;
+using System.Linq;
 
 namespace JamesFrowen.BitPacking.Tests
 {
@@ -83,6 +84,108 @@ namespace JamesFrowen.BitPacking.Tests
             }
         }
 
+
+        [Test]
+        public void WritesCorrectBitsLong()
+        {
+            // 30 bits
+            uint bits1 = 0b01_0010__0011_0100__0101_0110__0111_1000;
+            uint bits2 = 0b01_1010__1011_1100__1101_1110__1111_0000;
+            uint bits3 = 0b11_0101__0011_0001__0101_1001__1101_1010;
+
+
+            var expected1 = new byte[] {
+                0b01111000,
+                0b01010110,
+                0b00110100,
+                0b00010010,
+            };
+
+            // reverse because array is left to right, but bits above are right to left.
+            var expected2 = new byte[] {
+                0b00000110,
+                0b10101111,
+                0b00110111,
+                0b10111100,
+
+                0b00010010,
+                0b00110100,
+                0b01010110,
+                0b01111000
+            }.Reverse().ToArray();
+
+            var expected3 = new byte[] {
+                0b00000011,
+                0b01010011,
+                0b00010101,
+                0b10011101,
+
+                0b10100110,
+                0b10101111,
+                0b00110111,
+                0b10111100,
+
+                0b00010010,
+                0b00110100,
+                0b01010110,
+                0b01111000
+            }.Reverse().ToArray();
+
+
+            var writer = new BitWriter(BufferSize);
+
+
+            {
+                Assert.That(writer.Length, Is.Zero, "Should start at length 0");
+                writer.Write(bits1, 30);
+
+                Assert.That(writer.Length, Is.EqualTo(4), "should have length 4 after writing 30 bits");
+
+                var segment = writer.ToArraySegment();
+                Assert.That(segment.Offset, Is.Zero, "segment sould be at start of array");
+                Assert.That(segment.Count, Is.EqualTo(4), "segment length should by 4 after writing 30 bits");
+                for (var i = 0; i < 4; i++)
+                {
+                    Assert.That(segment.Array[i], Is.EqualTo(expected1[i]));
+                }
+            }
+
+            {
+                writer.Write(bits2, 30);
+
+                Assert.That(writer.Length, Is.EqualTo(8), "should have length 8 after writing 60 bits");
+
+                var segment = writer.ToArraySegment();
+                Assert.That(segment.Offset, Is.Zero, "segment sould be at start of array");
+                Assert.That(segment.Count, Is.EqualTo(8), "segment length should by 8 after writing 60 bits");
+                for (var i = 0; i < 8; i++)
+                {
+                    Assert.That(segment.Array[i], Is.EqualTo(expected2[i]));
+                }
+            }
+
+            {
+                writer.Write(bits3, 30);
+
+                Assert.That(writer.Length, Is.EqualTo(12), "should have length 12 after writing 90 bits");
+
+                var segment = writer.ToArraySegment();
+                Assert.That(segment.Offset, Is.Zero, "segment sould be at start of array");
+                Assert.That(segment.Count, Is.EqualTo(12), "segment length should by 12 after writing 90 bits");
+                for (var i = 0; i < 12; i++)
+                {
+                    Assert.That(segment.Array[i], Is.EqualTo(expected3[i]));
+                }
+            }
+        }
+
+        [Test]
+        public void ReadsCorrectBitsLong()
+        {
+            Assert.Ignore("Not Implemented");
+        }
+
+
         [Test]
         [Repeat(1000)]
         public void CanWrite32BitsRepeat()
@@ -108,6 +211,28 @@ namespace JamesFrowen.BitPacking.Tests
             var inValue2 = this.random.Uint(0, max);
             var inValue3 = this.random.Uint(0, max);
 
+            var writer = new BitWriter(BufferSize);
+
+            writer.Write(inValue1, 10);
+            writer.Write(inValue2, 10);
+            writer.Write(inValue3, 10);
+
+            var reader = new BitReader(writer.ToArraySegment());
+
+            var outValue1 = reader.Read(10);
+            var outValue2 = reader.Read(10);
+            var outValue3 = reader.Read(10);
+
+            Assert.That(outValue1, Is.EqualTo(inValue1), $"Failed [{inValue1},{inValue2},{inValue3}]");
+            Assert.That(outValue2, Is.EqualTo(inValue2), $"Failed [{inValue1},{inValue2},{inValue3}]");
+            Assert.That(outValue3, Is.EqualTo(inValue3), $"Failed [{inValue1},{inValue2},{inValue3}]");
+        }
+
+        [Test]
+        // failing values from repeat
+        [TestCase(696u, 617u, 902u)]
+        public void CanWrite3MultipleValues_FailingValues(uint inValue1, uint inValue2, uint inValue3)
+        {
             var writer = new BitWriter(BufferSize);
 
             writer.Write(inValue1, 10);
@@ -174,7 +299,8 @@ namespace JamesFrowen.BitPacking.Tests
         [Description("these are failed random cases")]
         [TestCase(859u, 490u, 45u, 583u, 153u, 321u, 147u, 305u)]
         [TestCase(360u, 454u, 105u, 949u, 194u, 312u, 272u, 350u)]
-        public void CanWrite8MultipleValues(uint inValue1, uint inValue2, uint inValue3, uint inValue4, uint inValue5, uint inValue6, uint inValue7, uint inValue8)
+        [TestCase(660u, 590u, 670u, 1014u, 121u, 743u, 228u, 126u)]
+        public void CanWrite8MultipleValues_FailingValues(uint inValue1, uint inValue2, uint inValue3, uint inValue4, uint inValue5, uint inValue6, uint inValue7, uint inValue8)
         {
             var writer = new BitWriter(BufferSize);
 

@@ -4,8 +4,10 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using UnityEngine;
 
 namespace JamesFrowen.BitPacking.Benchmark
@@ -33,12 +35,13 @@ namespace Mirror.Benchmark
             public int writeSize;
             public double elapsed;
             public double delta;
-            public double oercent;
+            public double percent;
             public double stddev;
         }
         public static ProcessedData[] analysisData(WriterType[] writerTypes, int[] bufferSizes, int[] writeSizes, Dictionary<WriterType, Dictionary<int, Dictionary<int, double>>> data)
         {
             return findBest(writerTypes, bufferSizes, writeSizes, data);
+            //return findBestFromKnown(bufferSizes, writeSizes, data);
         }
 
         private static ProcessedData[] findBest(WriterType[] writerTypes, int[] bufferSizes, int[] writeSizes, Dictionary<WriterType, Dictionary<int, Dictionary<int, double>>> data)
@@ -70,7 +73,7 @@ namespace Mirror.Benchmark
                         writeSize = writeSize,
                         elapsed = lowest,
                         delta = avg - lowest,
-                        oercent = (avg - lowest) / lowest,
+                        percent = (avg - lowest) / lowest,
                         stddev = stddev(values),
                         writer = lowestType
                     });
@@ -78,6 +81,61 @@ namespace Mirror.Benchmark
             }
             return list.ToArray();
         }
+
+        private static ProcessedData[] findBestFromKnown(int[] bufferSizes, int[] writeSizes, Dictionary<WriterType, Dictionary<int, Dictionary<int, double>>> data)
+        {
+            var list = new List<ProcessedData>();
+            Console.WriteLine($"{"type",-20}{"bufferSize",20}{"writeSize",20}{"elapsed",20}" +
+                $"{"percentVsN11",20}{"percentVsN5",20}{"percentVsS2",20}");
+
+            foreach (var bufferSize in bufferSizes)
+            {
+                foreach (var writeSize in writeSizes)
+                {
+                    var n11 = data[WriterType.NoScratch11][bufferSize][writeSize];
+                    var n5 = data[WriterType.NoScratch5][bufferSize][writeSize];
+                    var s2 = data[WriterType.Scratch2][bufferSize][writeSize];
+
+                    var best = WriterType.NoScratch11;
+                    var bestTime = n11;
+                    if (n5 < bestTime)
+                    {
+                        best = WriterType.NoScratch5;
+                        bestTime = n5;
+                    }
+                    if (s2 < bestTime)
+                    {
+                        best = WriterType.Scratch2;
+                        bestTime = s2;
+                    }
+
+                    var bestVsN11 = n11 - bestTime;
+                    var bestVsN5 = n5 - bestTime;
+                    var bestVsS2 = s2 - bestTime;
+
+                    var percentVsN11 = bestVsN11 / bestTime;
+                    var percentVsN5 = bestVsN5 / bestTime;
+                    var percentVsS2 = bestVsS2 / bestTime;
+
+                    Console.WriteLine($"{best,-20}{bufferSize,20}{writeSize,20}{bestTime * 1000,20:0.0}" +
+                        $"{percentVsN11 * 100,20:0.0}{percentVsN5 * 100,20:0.0}{percentVsS2 * 100,20:0.0}");
+
+
+                    //list.Add(new ProcessedData
+                    //{
+                    //    bufferSize = bufferSize,
+                    //    writeSize = writeSize,
+                    //    elapsed = lowest,
+                    //    delta = avg - lowest,
+                    //    percent = (avg - lowest) / lowest,
+                    //    stddev = stddev(values),
+                    //    writer = lowestType
+                    //});
+                }
+            }
+            return list.ToArray();
+        }
+
 
         static double stddev(List<double> values)
         {
@@ -97,13 +155,10 @@ namespace Mirror.Benchmark
     {
         Scratch1,
         Scratch2,
-        NoScratch1,
-        NoScratch2,
-        NoScratch3,
-        NoScratch4,
         NoScratch5,
-        NoScratch6,
-        NoScratch7,
+        NoScratch10,
+        NoScratch11,
+        NoScratch12,
         //Blittable,
     }
     public class Performance1
@@ -131,11 +186,12 @@ namespace Mirror.Benchmark
                 //};
                 var writeSizes = Enumerable.Range(1, 32).ToArray();
                 var writerTypes = new WriterType[] {
-                    WriterType.Scratch1,
+                    //WriterType.Scratch1,
                     WriterType.Scratch2,
                     WriterType.NoScratch5,
-                    WriterType.NoScratch6,
-                    WriterType.NoScratch7,
+                    //WriterType.NoScratch10,
+                    WriterType.NoScratch11,
+                    WriterType.NoScratch12,
                 };
                 foreach (var bufferSize in bufferSizes)
                 {
@@ -152,11 +208,12 @@ namespace Mirror.Benchmark
                 Console.WriteLine($"\n\n-------------\n\n");
 
                 Console.WriteLine($"\n-------------\nBest\n\n");
-                Console.WriteLine($"{"type",-20}{"bufferSize",20}{"writeSize",20}{"elapsed",20}{"delta",20}{"percent",20}{"stddev",20}");
                 var processed = DoStuffWithData.analysisData(writerTypes, bufferSizes, writeSizes, this.data);
+                if (processed.Length > 0)
+                    Console.WriteLine($"{"type",-20}{"bufferSize",20}{"writeSize",20}{"elapsed",20}{"delta",20}{"percent",20}{"stddev",20}");
                 foreach (var item in processed)
                 {
-                    Console.WriteLine($"{item.writer,-20}{item.bufferSize,20}{item.writeSize,20}{item.elapsed * 1000,20:0.0}{item.delta * 1000,20:0.0}{item.oercent * 100,20:0.0}{item.stddev,20:0.000}");
+                    Console.WriteLine($"{item.writer,-20}{item.bufferSize,20}{item.writeSize,20}{item.elapsed * 1000,20:0.0}{item.delta * 1000,20:0.0}{item.percent * 100,20:0.0}{item.stddev,20:0.000}");
                 }
 
 
@@ -216,49 +273,6 @@ namespace Mirror.Benchmark
                         };
                         break;
                     }
-                case WriterType.NoScratch2:
-                    {
-                        var writer = new BitWriter_NoScratch2(bufferSize);
-                        writer.Reset();
-                        writeSome = () =>
-                        {
-                            var start = Stopwatch.GetTimestamp();
-                            this.WriteSome(writer);
-                            var end = Stopwatch.GetTimestamp();
-                            writer.Reset();
-                            return end - start;
-                        };
-                        break;
-                    }
-
-                case WriterType.NoScratch3:
-                    {
-                        var writer = new BitWriter_NoScratch3(bufferSize);
-                        writer.Reset();
-                        writeSome = () =>
-                        {
-                            var start = Stopwatch.GetTimestamp();
-                            this.WriteSome(writer);
-                            var end = Stopwatch.GetTimestamp();
-                            writer.Reset();
-                            return end - start;
-                        };
-                        break;
-                    }
-                case WriterType.NoScratch4:
-                    {
-                        var writer = new BitWriter_NoScratch4(bufferSize);
-                        writer.Reset();
-                        writeSome = () =>
-                        {
-                            var start = Stopwatch.GetTimestamp();
-                            this.WriteSome(writer);
-                            var end = Stopwatch.GetTimestamp();
-                            writer.Reset();
-                            return end - start;
-                        };
-                        break;
-                    }
                 case WriterType.NoScratch5:
                     {
                         var writer = new BitWriter_NoScratch5(bufferSize);
@@ -273,9 +287,9 @@ namespace Mirror.Benchmark
                         };
                         break;
                     }
-                case WriterType.NoScratch6:
+                case WriterType.NoScratch10:
                     {
-                        var writer = new BitWriter_NoScratch6(bufferSize);
+                        var writer = new BitWriter_NoScratch10(bufferSize);
                         writer.Reset();
                         writeSome = () =>
                         {
@@ -287,9 +301,23 @@ namespace Mirror.Benchmark
                         };
                         break;
                     }
-                case WriterType.NoScratch7:
+                case WriterType.NoScratch11:
                     {
-                        var writer = new BitWriter_NoScratch7(bufferSize);
+                        var writer = new BitWriter_NoScratch11(bufferSize);
+                        writer.Reset();
+                        writeSome = () =>
+                        {
+                            var start = Stopwatch.GetTimestamp();
+                            this.WriteSome(writer);
+                            var end = Stopwatch.GetTimestamp();
+                            writer.Reset();
+                            return end - start;
+                        };
+                        break;
+                    }
+                case WriterType.NoScratch12:
+                    {
+                        var writer = new BitWriter_NoScratch12(bufferSize);
                         writer.Reset();
                         writeSome = () =>
                         {
@@ -342,27 +370,7 @@ namespace Mirror.Benchmark
             this.data[writerType][bufferSize][writeSize] = elapsed;
         }
 
-        void WriteSome(BitWriter_NoScratch2 writer)
-        {
-            for (var i = 0; i < writeCount; i++)
-            {
-                writer.Write((uint)i, writeSize);
-            }
-        }
-        void WriteSome(BitWriter_NoScratch3 writer)
-        {
-            for (var i = 0; i < writeCount; i++)
-            {
-                writer.Write((uint)i, writeSize);
-            }
-        }
-        void WriteSome(BitWriter_NoScratch4 writer)
-        {
-            for (var i = 0; i < writeCount; i++)
-            {
-                writer.Write((uint)i, writeSize);
-            }
-        }
+
         void WriteSome(BitWriter_NoScratch5 writer)
         {
             for (var i = 0; i < writeCount; i++)
@@ -370,20 +378,7 @@ namespace Mirror.Benchmark
                 writer.Write((uint)i, writeSize);
             }
         }
-        void WriteSome(BitWriter_NoScratch6 writer)
-        {
-            for (var i = 0; i < writeCount; i++)
-            {
-                writer.Write((uint)i, writeSize);
-            }
-        }
-        void WriteSome(BitWriter_NoScratch7 writer)
-        {
-            for (var i = 0; i < writeCount; i++)
-            {
-                writer.Write((uint)i, writeSize);
-            }
-        }
+
         void WriteSome(BitWriter_scratch1 writer)
         {
             for (var i = 0; i < writeCount; i++)
@@ -398,163 +393,31 @@ namespace Mirror.Benchmark
                 writer.Write((uint)i, writeSize);
             }
         }
+        void WriteSome(BitWriter_NoScratch10 writer)
+        {
+            for (var i = 0; i < writeCount; i++)
+            {
+                writer.Write((uint)i, writeSize);
+            }
+        }
+        void WriteSome(BitWriter_NoScratch11 writer)
+        {
+            for (var i = 0; i < writeCount; i++)
+            {
+                writer.Write((uint)i, writeSize);
+            }
+        }
+        void WriteSome(BitWriter_NoScratch12 writer)
+        {
+            for (var i = 0; i < writeCount; i++)
+            {
+                writer.Write((uint)i, writeSize);
+            }
+        }
     }
 }
 namespace JamesFrowen.BitPacking
 {
-    public unsafe class BitWriter_NoScratch2
-    {
-        // todo allow this to work with pooling
-
-        // todo do we need this max write size?
-        private const int MaxWriteSize = 32;
-
-        readonly byte[] buffer;
-
-        /// <summary>
-        /// next bit to write to inside writeByte
-        /// </summary>
-        int writeBit;
-
-        public int Length => Mathf.CeilToInt(this.writeBit / 8f);
-
-        public BitWriter_NoScratch2(int bufferSize) : this(new byte[bufferSize]) { }
-        public BitWriter_NoScratch2(byte[] buffer)
-        {
-            this.buffer = buffer;
-        }
-
-        public void Reset()
-        {
-            this.writeBit = 0;
-            // +1 because last might not be full word
-            Array.Clear(this.buffer, 0, Math.Min(this.Length, this.buffer.Length));
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public unsafe void Write(uint inValue, int inBits)
-        {
-            if (inBits > MaxWriteSize)
-            {
-                throw new ArgumentException($"bits must be less than {MaxWriteSize}");
-            }
-
-            fixed (byte* ptr = &this.buffer[this.writeBit / 8])
-            {
-                *(ulong*)ptr |= inValue << (this.writeBit % 8);
-
-                this.writeBit += inBits;
-            }
-        }
-
-        public ArraySegment<byte> ToArraySegment()
-        {
-            return new ArraySegment<byte>(this.buffer, 0, this.Length);
-        }
-    }
-
-    public unsafe class BitWriter_NoScratch3
-    {
-        // todo allow this to work with pooling
-
-        // todo do we need this max write size?
-        private const int MaxWriteSize = 32;
-
-        readonly byte[] buffer;
-
-        /// <summary>
-        /// next bit to write to inside writeByte
-        /// </summary>
-        int writeBit;
-
-        public int Length => Mathf.CeilToInt(this.writeBit / 8f);
-
-        public BitWriter_NoScratch3(int bufferSize) : this(new byte[bufferSize]) { }
-        public BitWriter_NoScratch3(byte[] buffer)
-        {
-            this.buffer = buffer;
-        }
-
-        public void Reset()
-        {
-            this.writeBit = 0;
-            // +1 because last might not be full word
-            Array.Clear(this.buffer, 0, Math.Min(this.Length, this.buffer.Length));
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public unsafe void Write(uint inValue, int inBits)
-        {
-            if (inBits > MaxWriteSize)
-            {
-                throw new ArgumentException($"bits must be less than {MaxWriteSize}");
-            }
-
-            fixed (byte* ptr = &this.buffer[this.writeBit / 8])
-            {
-                *(ulong*)ptr |= inValue << (this.writeBit & 0b111);
-
-                this.writeBit += inBits;
-            }
-        }
-
-        public ArraySegment<byte> ToArraySegment()
-        {
-            return new ArraySegment<byte>(this.buffer, 0, this.Length);
-        }
-    }
-
-    public unsafe class BitWriter_NoScratch4
-    {
-        // todo allow this to work with pooling
-
-        // todo do we need this max write size?
-        private const int MaxWriteSize = 32;
-
-        readonly byte[] buffer;
-
-        /// <summary>
-        /// next bit to write to inside writeByte
-        /// </summary>
-        int writeBit;
-
-        public int Length => Mathf.CeilToInt(this.writeBit / 8f);
-
-        public BitWriter_NoScratch4(int bufferSize) : this(new byte[bufferSize]) { }
-        public BitWriter_NoScratch4(byte[] buffer)
-        {
-            this.buffer = buffer;
-        }
-
-        public void Reset()
-        {
-            this.writeBit = 0;
-            // +1 because last might not be full word
-            Array.Clear(this.buffer, 0, Math.Min(this.Length, this.buffer.Length));
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public unsafe void Write(uint inValue, int inBits)
-        {
-            if (inBits > MaxWriteSize)
-            {
-                throw new ArgumentException($"bits must be less than {MaxWriteSize}");
-            }
-
-            fixed (byte* ptr = &this.buffer[this.writeBit >> 3])
-            {
-                *(ulong*)ptr |= inValue << (this.writeBit % 8);
-
-                this.writeBit += inBits;
-            }
-        }
-
-        public ArraySegment<byte> ToArraySegment()
-        {
-            return new ArraySegment<byte>(this.buffer, 0, this.Length);
-        }
-    }
-
     public unsafe class BitWriter_NoScratch5
     {
         // todo allow this to work with pooling
@@ -605,14 +468,17 @@ namespace JamesFrowen.BitPacking
         }
     }
 
-    public unsafe class BitWriter_NoScratch6
+    public unsafe class BitWriter_NoScratch10
     {
         // todo allow this to work with pooling
 
         // todo do we need this max write size?
         private const int MaxWriteSize = 32;
 
-        byte[] buffer;
+        byte[] managedBuffer;
+        byte* ptr;
+        ulong* longPtr;
+        readonly int bufferSize;
 
         /// <summary>
         /// next bit to write to inside writeByte
@@ -621,43 +487,68 @@ namespace JamesFrowen.BitPacking
 
         public int Length => Mathf.CeilToInt(this.writeBit / 8f);
 
-        public BitWriter_NoScratch6(int bufferSize) : this(new byte[bufferSize]) { }
-        public BitWriter_NoScratch6(byte[] buffer)
+        public BitWriter_NoScratch10(int bufferSize)
         {
-            this.buffer = buffer;
+            this.bufferSize = bufferSize;
+            var voidPtr = NewUnmanaged(bufferSize);
+            this.ptr = (byte*)voidPtr;
+            this.longPtr = (ulong*)voidPtr;
+            this.managedBuffer = new byte[bufferSize];
+        }
+
+        static void* NewUnmanaged(int elementCount)
+        {
+            var newSizeInBytes = elementCount;
+            var newArrayPointer = (byte*)Marshal.AllocHGlobal(newSizeInBytes).ToPointer();
+
+            ClearUnmanged(newArrayPointer, newSizeInBytes);
+
+            return newArrayPointer;
+        }
+
+        static void ClearUnmanged(byte* ptr, int count)
+        {
+            for (var i = 0; i < count; i++)
+                *(ptr + i) = 0;
         }
 
         public void Reset()
         {
+            Array.Clear(this.managedBuffer, 0, this.Length);
+            ClearUnmanged(this.ptr, this.Length);
             this.writeBit = 0;
-            // +1 because last might not be full word
-            Array.Clear(this.buffer, 0, Math.Min(this.Length, this.buffer.Length));
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Write(uint inValue, int inBits)
         {
-            fixed (byte* ptr = &this.buffer[this.writeBit >> 3])
-            {
-                *(ulong*)ptr |= inValue << (this.writeBit & 0b111);
-            }
+            // todo do safely checks on args
+            // todo mask incase invalue is more than inBits
+
+            var value = ((ulong)inValue) << (this.writeBit & 0b111);
+
+            *(this.longPtr + (this.writeBit >> 6)) |= value;
+
             this.writeBit += inBits;
         }
 
         public ArraySegment<byte> ToArraySegment()
         {
-            return new ArraySegment<byte>(this.buffer, 0, this.Length);
+            var length = this.Length;
+            for (var i = 0; i < length; i++)
+                this.managedBuffer[i] = *(this.ptr + i);
+            return new ArraySegment<byte>(this.managedBuffer, 0, length);
         }
     }
-
-    public unsafe class BitWriter_NoScratch7
+    public unsafe class BitWriter_NoScratch11
     {
         // todo allow this to work with pooling
 
-        // todo do we need this max write size?
-        private const int MaxWriteSize = 32;
-
-        byte[] buffer;
+        byte[] managedBuffer;
+        byte* ptr;
+        ulong* longPtr;
+        readonly int bufferSize;
+        readonly int bufferSizeBits;
 
         /// <summary>
         /// next bit to write to inside writeByte
@@ -666,31 +557,143 @@ namespace JamesFrowen.BitPacking
 
         public int Length => Mathf.CeilToInt(this.writeBit / 8f);
 
-        public BitWriter_NoScratch7(int bufferSize) : this(new byte[bufferSize]) { }
-        public BitWriter_NoScratch7(byte[] buffer)
+        public BitWriter_NoScratch11(int bufferSize)
         {
-            this.buffer = buffer;
+            this.bufferSize = bufferSize;
+            this.bufferSizeBits = bufferSize * 8;
+            var voidPtr = NewUnmanaged(bufferSize);
+            this.ptr = (byte*)voidPtr;
+            this.longPtr = (ulong*)voidPtr;
+            this.managedBuffer = new byte[bufferSize];
+        }
+
+        static void* NewUnmanaged(int elementCount)
+        {
+            var newSizeInBytes = elementCount;
+            var newArrayPointer = (byte*)Marshal.AllocHGlobal(newSizeInBytes).ToPointer();
+
+            ClearUnmanged(newArrayPointer, newSizeInBytes);
+
+            return newArrayPointer;
+        }
+
+        static void ClearUnmanged(byte* ptr, int count)
+        {
+            for (var i = 0; i < count; i++)
+                *(ptr + i) = 0;
         }
 
         public void Reset()
         {
+            Array.Clear(this.managedBuffer, 0, this.Length);
+            ClearUnmanged(this.ptr, this.Length);
             this.writeBit = 0;
-            // +1 because last might not be full word
-            Array.Clear(this.buffer, 0, Math.Min(this.Length, this.buffer.Length));
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Write(uint inValue, int inBits)
         {
-            fixed (byte* ptr = &this.buffer[this.writeBit >> 3])
-            {
-                *(ulong*)ptr |= inValue << (this.writeBit & 0b111);
-            }
-            this.writeBit += inBits;
+            if (inBits == 0) { throw new ArgumentException("inBits should not be zero", nameof(inBits)); }
+
+            const int MaxWriteSize = 32;
+            if (inBits > MaxWriteSize) { throw new ArgumentException($"inBits should not be greater than {MaxWriteSize}", nameof(inBits)); }
+
+            var endCount = this.writeBit + inBits;
+            if (endCount > this.bufferSizeBits) { throw new EndOfStreamException(); }
+
+            var mask = (1ul << inBits) - 1;
+            var value = (mask & inValue) << (this.writeBit & 0b111);
+
+            *(this.longPtr + (this.writeBit >> 6)) |= value;
+
+            this.writeBit = endCount;
         }
 
         public ArraySegment<byte> ToArraySegment()
         {
-            return new ArraySegment<byte>(this.buffer, 0, this.Length);
+            var length = this.Length;
+            for (var i = 0; i < length; i++)
+                this.managedBuffer[i] = *(this.ptr + i);
+            return new ArraySegment<byte>(this.managedBuffer, 0, length);
+        }
+    }
+
+    public unsafe class BitWriter_NoScratch12
+    {
+
+        // todo allow this to work with pooling
+
+        byte[] managedBuffer;
+        byte* ptr;
+        uint* uintPtr;
+        readonly int bufferSize;
+        readonly int bufferSizeBits;
+
+        /// <summary>
+        /// next bit to write to inside writeByte
+        /// </summary>
+        int writeBit;
+
+        public int Length => Mathf.CeilToInt(this.writeBit / 8f);
+
+        public BitWriter_NoScratch12(int bufferSize)
+        {
+            this.bufferSize = bufferSize;
+            this.bufferSizeBits = bufferSize * 8;
+            var voidPtr = NewUnmanaged(bufferSize);
+            this.ptr = (byte*)voidPtr;
+            this.uintPtr = (uint*)voidPtr;
+            this.managedBuffer = new byte[bufferSize];
+        }
+
+        static void* NewUnmanaged(int elementCount)
+        {
+            var newSizeInBytes = elementCount;
+            var newArrayPointer = (byte*)Marshal.AllocHGlobal(newSizeInBytes).ToPointer();
+
+            ClearUnmanged(newArrayPointer, newSizeInBytes);
+
+            return newArrayPointer;
+        }
+
+        static void ClearUnmanged(byte* ptr, int count)
+        {
+            for (var i = 0; i < count; i++)
+                *(ptr + i) = 0;
+        }
+
+        public void Reset()
+        {
+            Array.Clear(this.managedBuffer, 0, this.Length);
+            ClearUnmanged(this.ptr, this.Length);
+            this.writeBit = 0;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Write(uint inValue, int inBits)
+        {
+            if (inBits == 0) { throw new ArgumentException("inBits should not be zero", nameof(inBits)); }
+
+            const int MaxWriteSize = 32;
+            if (inBits > MaxWriteSize) { throw new ArgumentException($"inBits should not be greater than {MaxWriteSize}", nameof(inBits)); }
+
+            var endCount = this.writeBit + inBits;
+            if (endCount > this.bufferSizeBits) { throw new EndOfStreamException(); }
+
+            var mask = (1ul << inBits) - 1;
+            var value = (mask & inValue) << (this.writeBit & 0b1_1111);
+
+            *(ulong*)(this.uintPtr + (this.writeBit >> 5)) |= value;
+
+            this.writeBit = endCount;
+        }
+
+        public ArraySegment<byte> ToArraySegment()
+        {
+            var length = this.Length;
+            for (var i = 0; i < length; i++)
+                this.managedBuffer[i] = *(this.ptr + i);
+            return new ArraySegment<byte>(this.managedBuffer, 0, length);
         }
     }
 }
