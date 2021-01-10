@@ -41,16 +41,14 @@ namespace JamesFrowen.BitPacking
                 throw new ArgumentException($"bits must be less than {MaxWriteSize}");
             }
 
-            fixed (byte* ptr = &this.buffer[this.writeBit / 8])
+            // todo fix this problem:
+            //   what if inValue has more than inBits and writes them to buffer
+            //   next value will |= and contain extra bits from previous inValue
+            //   Solution 1: mask inValue to inBits before shift/or= 
+            
+            fixed (byte* ptr = &this.buffer[this.writeBit >> 3])
             {
-                var longPtr = (ulong*)ptr;
-                // get bufferValue
-                var v = *longPtr;
-                // add inValue
-                var shiftBits = this.writeBit % 8;
-                v |= inValue << shiftBits;
-                // set bufferValue
-                *longPtr = v;
+                *(ulong*)ptr |= inValue << (this.writeBit & 0b111);
 
                 this.writeBit += inBits;
             }
