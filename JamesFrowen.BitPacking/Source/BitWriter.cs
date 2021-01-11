@@ -11,7 +11,7 @@ namespace JamesFrowen.BitPacking
         // todo allow this to work with pooling
 
         byte[] managedBuffer;
-        byte* ptr;
+        IntPtr intPtr;
         ulong* ulongPtr;
         readonly int bufferSize;
         readonly int bufferSizeBits;
@@ -21,38 +21,34 @@ namespace JamesFrowen.BitPacking
         /// </summary>
         int writeBit;
 
-        public int Length => Mathf.CeilToInt(this.writeBit / 8f);
+        public int ByteLength => Mathf.CeilToInt(this.writeBit / 8f);
 
         public BitWriter(int bufferSize)
         {
+            // round to up multiple of 8
+            bufferSize = ((bufferSize / 8) + 1) * 8;
             this.bufferSize = bufferSize;
             this.bufferSizeBits = bufferSize * 8;
-            var voidPtr = NewUnmanaged(bufferSize);
-            this.ptr = (byte*)voidPtr;
+
+            this.intPtr = Marshal.AllocHGlobal(bufferSize);
+            var voidPtr = this.intPtr.ToPointer();
             this.ulongPtr = (ulong*)voidPtr;
+
             this.managedBuffer = new byte[bufferSize];
+
+            ClearUnmanged(this.ulongPtr, bufferSize / 8);
         }
 
-        static void* NewUnmanaged(int elementCount)
-        {
-            var newSizeInBytes = elementCount;
-            var newArrayPointer = (byte*)Marshal.AllocHGlobal(newSizeInBytes).ToPointer();
-
-            ClearUnmanged(newArrayPointer, newSizeInBytes);
-
-            return newArrayPointer;
-        }
-
-        static void ClearUnmanged(byte* ptr, int count)
+        static void ClearUnmanged(ulong* longPtr, int count)
         {
             for (var i = 0; i < count; i++)
-                *(ptr + i) = 0;
+                *(longPtr + i) = 0;
         }
 
         public void Reset()
         {
-            Array.Clear(this.managedBuffer, 0, this.Length);
-            ClearUnmanged(this.ptr, this.Length);
+            Array.Clear(this.managedBuffer, 0, this.ByteLength);
+            ClearUnmanged(this.ulongPtr, (this.ByteLength / 8) + 1);
             this.writeBit = 0;
         }
 
@@ -93,9 +89,15 @@ namespace JamesFrowen.BitPacking
 
         public ArraySegment<byte> ToArraySegment()
         {
-            var length = this.Length;
-            for (var i = 0; i < length; i++)
-                this.managedBuffer[i] = *(this.ptr + i);
+            fixed (byte* mPtr = &this.managedBuffer[0])
+            {
+                for (var i = 0; i < ((this.writeBit >> 6) + 1); i++)
+                {
+                    *(((ulong*)mPtr) + i) = *(this.ulongPtr + i);
+                }
+            }
+
+            var length = this.ByteLength;
             return new ArraySegment<byte>(this.managedBuffer, 0, length);
         }
     }

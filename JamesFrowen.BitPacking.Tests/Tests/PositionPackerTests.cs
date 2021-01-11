@@ -51,7 +51,7 @@ namespace JamesFrowen.BitPacking.Tests
             var writer = new BitWriter(BufferSize);
             packer.Pack(writer, inValue);
 
-            Assert.That(writer.Length, Is.EqualTo(writeCount));
+            Assert.That(writer.ByteLength, Is.EqualTo(writeCount));
         }
 
         [Test]
@@ -59,7 +59,7 @@ namespace JamesFrowen.BitPacking.Tests
         public void UnpackHasCorrectLength(Vector3 min, Vector3 max, float precision, Vector3 inValue)
         {
             var packer = new PositionPacker(min, max, precision);
-            var readCount = Mathf.CeilToInt(packer.bitCount / 8f);
+            var readCount = Mathf.FloorToInt(packer.bitCount / 8f);
 
             var writer = new BitWriter(BufferSize);
             packer.Pack(writer, inValue);

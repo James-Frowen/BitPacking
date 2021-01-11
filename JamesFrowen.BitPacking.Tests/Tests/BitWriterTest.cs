@@ -5,7 +5,7 @@ namespace JamesFrowen.BitPacking.Tests
 {
     public class BitWriterTest
     {
-        private const int BufferSize = 1000;
+        private const int BufferSize = 1200;
         const int max = (1 << 10) - 1;
 
         TestRandom random = new TestRandom();
@@ -24,10 +24,10 @@ namespace JamesFrowen.BitPacking.Tests
 
 
             {
-                Assert.That(writer.Length, Is.Zero, "Should start at length 0");
+                Assert.That(writer.ByteLength, Is.Zero, "Should start at length 0");
                 writer.Write(bits1, 4);
 
-                Assert.That(writer.Length, Is.EqualTo(1), "should have length 1 after writing 4 bits");
+                Assert.That(writer.ByteLength, Is.EqualTo(1), "should have length 1 after writing 4 bits");
 
                 var segment = writer.ToArraySegment();
                 Assert.That(segment.Offset, Is.Zero, "segment sould be at start of array");
@@ -39,7 +39,7 @@ namespace JamesFrowen.BitPacking.Tests
 
             {
                 writer.Write(bits2, 10);
-                Assert.That(writer.Length, Is.EqualTo(2), "should have length 2 after writing 14 bits");
+                Assert.That(writer.ByteLength, Is.EqualTo(2), "should have length 2 after writing 14 bits");
 
                 var segment = writer.ToArraySegment();
                 Assert.That(segment.Offset, Is.Zero, "segment should be at start of array");
@@ -136,10 +136,10 @@ namespace JamesFrowen.BitPacking.Tests
 
 
             {
-                Assert.That(writer.Length, Is.Zero, "Should start at length 0");
+                Assert.That(writer.ByteLength, Is.Zero, "Should start at length 0");
                 writer.Write(bits1, 30);
 
-                Assert.That(writer.Length, Is.EqualTo(4), "should have length 4 after writing 30 bits");
+                Assert.That(writer.ByteLength, Is.EqualTo(4), "should have length 4 after writing 30 bits");
 
                 var segment = writer.ToArraySegment();
                 Assert.That(segment.Offset, Is.Zero, "segment sould be at start of array");
@@ -153,7 +153,7 @@ namespace JamesFrowen.BitPacking.Tests
             {
                 writer.Write(bits2, 30);
 
-                Assert.That(writer.Length, Is.EqualTo(8), "should have length 8 after writing 60 bits");
+                Assert.That(writer.ByteLength, Is.EqualTo(8), "should have length 8 after writing 60 bits");
 
                 var segment = writer.ToArraySegment();
                 Assert.That(segment.Offset, Is.Zero, "segment sould be at start of array");
@@ -167,7 +167,7 @@ namespace JamesFrowen.BitPacking.Tests
             {
                 writer.Write(bits3, 30);
 
-                Assert.That(writer.Length, Is.EqualTo(12), "should have length 12 after writing 90 bits");
+                Assert.That(writer.ByteLength, Is.EqualTo(12), "should have length 12 after writing 90 bits");
 
                 var segment = writer.ToArraySegment();
                 Assert.That(segment.Offset, Is.Zero, "segment sould be at start of array");
@@ -182,7 +182,56 @@ namespace JamesFrowen.BitPacking.Tests
         [Test]
         public void ReadsCorrectBitsLong()
         {
-            Assert.Ignore("Not Implemented");
+            // values from WritesCorrectBitsLong
+            var buffers = new byte[] {
+                0b00000011,
+                0b01010011,
+                0b00010101,
+                0b10011101,
+
+                0b10100110,
+                0b10101111,
+                0b00110111,
+                0b10111100,
+
+                0b00010010,
+                0b00110100,
+                0b01010110,
+                0b01111000
+            }.Reverse().ToArray();
+
+            uint expected1 = 0b01_0010__0011_0100__0101_0110__0111_1000;
+            uint expected2 = 0b01_1010__1011_1100__1101_1110__1111_0000;
+            uint expected3 = 0b11_0101__0011_0001__0101_1001__1101_1010;
+
+
+            var reader = new BitReader(buffers, 0, 12);
+
+            const int readLength = 30;
+
+            {
+                var value = reader.Read(readLength);
+                Assert.That(reader.Position, Is.EqualTo(readLength / 8), "position should be rounded down of bitposition");
+                Assert.That(reader.BitPosition, Is.EqualTo(readLength));
+
+                Assert.That(value, Is.EqualTo(expected1));
+            }
+
+            {
+                var value = reader.Read(readLength);
+                Assert.That(reader.Position, Is.EqualTo(readLength * 2 / 8), "position should be rounded down of bitposition");
+                Assert.That(reader.BitPosition, Is.EqualTo(readLength * 2));
+
+                Assert.That(value, Is.EqualTo(expected2));
+            }
+
+            {
+                var value = reader.Read(readLength);
+                Assert.That(reader.Position, Is.EqualTo(readLength * 3 / 8), "position should be rounded down of bitposition");
+                Assert.That(reader.BitPosition, Is.EqualTo(readLength * 3));
+
+                Assert.That(value, Is.EqualTo(expected3));
+            }
         }
 
 
@@ -338,6 +387,50 @@ namespace JamesFrowen.BitPacking.Tests
 
             var outValue8 = reader.Read(10);
             Assert.That(outValue8, Is.EqualTo(inValue8), $"Failed [{inValue1},{inValue2},{inValue3},{inValue4},{inValue5},{inValue6},{inValue7},{inValue8}]");
+        }
+
+
+        [Test]
+        public void CopiesValuesToSegment()
+        {
+            const int Count = 100;
+            var bytes = Enumerable.Range(0, Count).Select(x => (byte)x).ToArray();
+            var writer = new BitWriter(BufferSize);
+            foreach (var b in bytes)
+            {
+                writer.Write(b, 8);
+            }
+            Assert.That(writer.ByteLength, Is.EqualTo(Count), $"Should have written {Count} bytes");
+
+            var segment = writer.ToArraySegment();
+            for (var i = 0; i < Count; i++)
+            {
+                Assert.That(segment.Array[i], Is.EqualTo(bytes[i]), "values should be equal");
+            }
+        }
+
+        [Test]
+        [TestCase(0, 0)]
+        [TestCase(1, 3)]
+        [TestCase(2, 5)]
+        [TestCase(3, 8)]
+        [TestCase(4, 10)]
+        [TestCase(5, 13)]
+        [TestCase(6, 15)]
+        [TestCase(7, 18)]
+        [TestCase(8, 20)]
+        [TestCase(9, 23)]
+        public void SegmentHasCorrectLength(int numberOf20Writes, int expectedSegmentSize)
+        {
+            var writer = new BitWriter(BufferSize);
+            for (var i = 0; i < numberOf20Writes; i++)
+            {
+                writer.Write(0, 20);
+            }
+            Assert.That(writer.ByteLength, Is.EqualTo(expectedSegmentSize), $"Should have written {expectedSegmentSize} bytes");
+
+            var segment = writer.ToArraySegment();
+            Assert.That(segment.Count, Is.EqualTo(expectedSegmentSize), $"Segment should be {expectedSegmentSize} bytes");
         }
     }
 }
