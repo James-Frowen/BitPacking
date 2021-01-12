@@ -19,13 +19,14 @@ namespace JamesFrowen.BitPacking
 
         public int BitPosition => this.readBit;
 
+
         public BitReader(byte[] buffer, int offset, int byteLength)
         {
             this.buffer = buffer;
             this.startOffset = offset;
             this.endLength = byteLength;
         }
-
+        public BitReader(byte[] buffer) : this(buffer, 0, buffer.Length) { }
         public BitReader(ArraySegment<byte> arraySegment) : this(arraySegment.Array, arraySegment.Offset, arraySegment.Count) { }
 
         public unsafe uint Read(int inBits)

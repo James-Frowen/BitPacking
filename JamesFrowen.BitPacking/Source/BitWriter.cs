@@ -6,14 +6,14 @@ using UnityEngine;
 
 namespace JamesFrowen.BitPacking
 {
-    public unsafe class BitWriter
+    public sealed unsafe class BitWriter : IDisposable
     {
         // todo allow this to work with pooling
 
-        byte[] managedBuffer;
         IntPtr intPtr;
         ulong* ulongPtr;
         readonly int bufferSize;
+        readonly int bufferSizeLong;
         readonly int bufferSizeBits;
 
         /// <summary>
@@ -29,32 +29,55 @@ namespace JamesFrowen.BitPacking
             bufferSize = ((bufferSize / 8) + 1) * 8;
             this.bufferSize = bufferSize;
             this.bufferSizeBits = bufferSize * 8;
+            this.bufferSizeLong = bufferSize / 8;
+
 
             this.intPtr = Marshal.AllocHGlobal(bufferSize);
             var voidPtr = this.intPtr.ToPointer();
             this.ulongPtr = (ulong*)voidPtr;
 
-            this.managedBuffer = new byte[bufferSize];
-
-            ClearUnmanged(this.ulongPtr, bufferSize / 8);
+            this.ClearUnmanged(this.ulongPtr, this.bufferSizeLong);
+        }
+        ~BitWriter()
+        {
+            this.Dispose();
         }
 
-        static void ClearUnmanged(ulong* longPtr, int count)
+        public void Dispose()
         {
-            for (var i = 0; i < count; i++)
+            if (this.intPtr != IntPtr.Zero)
+            {
+                Marshal.FreeHGlobal(this.intPtr);
+                this.intPtr = IntPtr.Zero;
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        void ThrowIfDisposed()
+        {
+            if (this.intPtr == IntPtr.Zero) { throw new ObjectDisposedException(nameof(BitWriter)); }
+        }
+
+        void ClearUnmanged(ulong* longPtr, int count)
+        {
+            // clear up to count or bufferSizeLong
+            for (var i = 0; i < count || i < this.bufferSizeLong; i++)
                 *(longPtr + i) = 0;
         }
 
         public void Reset()
         {
-            Array.Clear(this.managedBuffer, 0, this.ByteLength);
-            ClearUnmanged(this.ulongPtr, (this.ByteLength / 8) + 1);
+            this.ThrowIfDisposed();
+
+            this.ClearUnmanged(this.ulongPtr, (this.ByteLength / 8) + 1);
             this.writeBit = 0;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Write(uint inValue, int inBits)
         {
+            // todo does this check cost performance
+            this.ThrowIfDisposed();
             if (inBits == 0) { throw new ArgumentException("inBits should not be zero", nameof(inBits)); }
 
             const int MaxWriteSize = 32;
@@ -87,18 +110,48 @@ namespace JamesFrowen.BitPacking
             this.writeBit = endCount;
         }
 
-        public ArraySegment<byte> ToArraySegment()
+        public byte[] ToArray()
         {
-            fixed (byte* mPtr = &this.managedBuffer[0])
+            var array = new byte[this.ByteLength];
+            this.CopyToArrayMarshal(array, 0);
+            return array;
+        }
+
+        /// <summary>
+        /// Copies unmanged buffer to given array
+        /// </summary>
+        /// <param name="array"></param>
+        /// <param name="offset"></param>
+        /// <returns>number of bytes copied</returns>
+        public int CopyToArray(byte[] array, int offset)
+        {
+            this.ThrowIfDisposed();
+
+            fixed (byte* outPtr = &array[offset])
             {
                 for (var i = 0; i < ((this.writeBit >> 6) + 1); i++)
                 {
-                    *(((ulong*)mPtr) + i) = *(this.ulongPtr + i);
+                    *(((ulong*)outPtr) + i) = *(this.ulongPtr + i);
                 }
             }
 
+            return this.ByteLength;
+        }
+
+        /// <summary>
+        /// Copies unmanged buffer to given array
+        /// </summary>
+        /// <param name="array"></param>
+        /// <param name="offset"></param>
+        /// <returns>number of bytes copied</returns>
+        public int CopyToArrayMarshal(byte[] array, int offset)
+        {
+            this.ThrowIfDisposed();
+
             var length = this.ByteLength;
-            return new ArraySegment<byte>(this.managedBuffer, 0, length);
+            Marshal.Copy(this.intPtr, array, offset, length);
+
+            return length;
         }
     }
 }

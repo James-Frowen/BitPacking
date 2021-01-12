@@ -31,7 +31,7 @@ namespace JamesFrowen.BitPacking.Tests
             var writer = new BitWriter(BufferSize);
             packer.Pack(writer, inValue);
 
-            var reader = new BitReader(writer.ToArraySegment());
+            var reader = new BitReader(writer.ToArray());
             var outValue = packer.Unpack(reader);
 
             var debugMessage = $"in{inValue} out{outValue}";
@@ -64,7 +64,7 @@ namespace JamesFrowen.BitPacking.Tests
             var writer = new BitWriter(BufferSize);
             packer.Pack(writer, inValue);
 
-            var reader = new BitReader(writer.ToArraySegment());
+            var reader = new BitReader(writer.ToArray());
             var outValue = packer.Unpack(reader);
 
             Assert.That(reader.Position, Is.EqualTo(readCount));
