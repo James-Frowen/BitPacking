@@ -1,3 +1,10 @@
+*.csproj.meta
+*.sln.meta
+JamesFrowen.BitPacking.meta
+JamesFrowen.BitPacking.Tests.meta
+JamesFrowen.BitPacking/Source.meta
+JamesFrowen.BitPacking.Tests/Tests.meta
+README.md.meta
 
 # Created by https://www.toptal.com/developers/gitignore/api/dotnetcore,vs
 # Edit at https://www.toptal.com/developers/gitignore?templates=dotnetcore,vs
