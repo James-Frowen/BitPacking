@@ -3,6 +3,22 @@ using System.Runtime.CompilerServices;
 
 namespace JamesFrowen.BitPacking
 {
+    /// <summary>
+    /// These are common methods for BitWriter, 
+    /// <para>This class is for simple methods and types that dont need any optimization or packing, like Boolean.</para>
+    /// <para>For other types like Vector3 they should have their own packer class to handle packing and unpacking</para>
+    /// </summary>
+    public static class BitWriterExtensions
+    {
+        public static void WriteBool(this BitWriter writer, bool value)
+        {
+            writer.Write(value ? 1u : 0u, 1);
+        }
+        public static bool ReadBool(this BitReader reader)
+        {
+            return reader.Read(1) == 1u;
+        }
+    }
     public class BitWriter
     {
         // todo allow this to work with pooling
