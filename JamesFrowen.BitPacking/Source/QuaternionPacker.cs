@@ -14,12 +14,16 @@ namespace JamesFrowen.BitPacking
         // is also mask
         readonly uint UintMax;
 
+
+        public readonly int bitCountPerElement;
         public readonly int bitCount;
+
 
         public QuaternionPacker(int quaternionBitLength)
         {
             this.BitLength = quaternionBitLength;
             this.UintMax = (1u << this.BitLength) - 1u;
+            this.bitCountPerElement = quaternionBitLength;
             this.bitCount = 2 + (quaternionBitLength * 3);
         }
 
