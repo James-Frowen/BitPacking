@@ -87,23 +87,20 @@ namespace JamesFrowen.BitPacking.Tests
 
             var reader = new BitReader(writer.ToArraySegment());
             var outValue = packer.Unpack(reader);
-
+            //Debug.Log($"Packed: ({inValue.x:0.000},{inValue.y:0.000},{inValue.z:0.000},{inValue.w:0.000}) " +
+            //          $"UnPacked: ({outValue.x:0.000},{outValue.y:0.000},{outValue.z:0.000},{outValue.w:0.000})");
 
             Assert.That(outValue.x, Is.Not.NaN, "x was NaN");
             Assert.That(outValue.y, Is.Not.NaN, "y was NaN");
             Assert.That(outValue.z, Is.Not.NaN, "z was NaN");
             Assert.That(outValue.w, Is.Not.NaN, "w was NaN");
 
-            QuaternionPacker.FindLargestIndex(outValue.x, outValue.y, outValue.z, outValue.w, out var _, out var larggest);
-            var sign = Mathf.Sign(larggest);
-            // flip sign of A if largest is is negative
-            // Q == (-Q)
+            var assertSign = getAssertSign(inValue, outValue);
 
-            Assert.That(outValue.x, IsUnSignedEqualWithIn(inValue.x), $"x off by {Mathf.Abs(sign * inValue.x - outValue.x)}");
-            Assert.That(outValue.y, IsUnSignedEqualWithIn(inValue.y), $"y off by {Mathf.Abs(sign * inValue.y - outValue.y)}");
-            Assert.That(outValue.z, IsUnSignedEqualWithIn(inValue.z), $"z off by {Mathf.Abs(sign * inValue.z - outValue.z)}");
-            Assert.That(outValue.w, IsUnSignedEqualWithIn(inValue.w), $"w off by {Mathf.Abs(sign * inValue.w - outValue.w)}");
-
+            Assert.That(outValue.x, IsUnSignedEqualWithIn(inValue.x), $"x off by {Mathf.Abs(assertSign * inValue.x - outValue.x)}");
+            Assert.That(outValue.y, IsUnSignedEqualWithIn(inValue.y), $"y off by {Mathf.Abs(assertSign * inValue.y - outValue.y)}");
+            Assert.That(outValue.z, IsUnSignedEqualWithIn(inValue.z), $"z off by {Mathf.Abs(assertSign * inValue.z - outValue.z)}");
+            Assert.That(outValue.w, IsUnSignedEqualWithIn(inValue.w), $"w off by {Mathf.Abs(assertSign * inValue.w - outValue.w)}");
 
             var inVec = inValue * Vector3.forward;
             var outVec = outValue * Vector3.forward;
@@ -116,10 +113,28 @@ namespace JamesFrowen.BitPacking.Tests
 
             EqualConstraint IsUnSignedEqualWithIn(float v)
             {
-                return Is.EqualTo(v).Within(precision).Or.EqualTo(sign * v).Within(precision);
+                return Is.EqualTo(v).Within(precision).Or.EqualTo(assertSign * v).Within(precision);
             }
         }
 
+        /// <summary>
+        /// sign used to validate values (in/out are different, then flip values
+        /// </summary>
+        /// <param name="inValue"></param>
+        /// <param name="outValue"></param>
+        /// <returns></returns>
+        private static float getAssertSign(Quaternion inValue, Quaternion outValue)
+        {
+            QuaternionPacker.FindLargestIndex(inValue.x, inValue.y, inValue.z, inValue.w, out var _, out var inLargest);
+            QuaternionPacker.FindLargestIndex(outValue.x, outValue.y, outValue.z, outValue.w, out var _, out var outLargest);
+            // flip sign of A if largest is is negative
+            // Q == (-Q)
+            var inSign = Mathf.Sign(inLargest);
+            var outSign = Mathf.Sign(outLargest);
+
+            float assertSign = inSign == outSign ? 1 : -1;
+            return assertSign;
+        }
 
         [Test]
         [Repeat(100)]

@@ -6,23 +6,40 @@ namespace JamesFrowen.BitPacking
 {
     public class QuaternionPacker
     {
-        const float MinValue = -1f / 1.414214f; // 1/ sqrt(2)
+        /// <summary>
+        /// 1 / sqrt(2)
+        /// </summary>
         const float MaxValue = 1f / 1.414214f;
 
-        readonly int BitLength = 10;
-        // same as Mathf.Pow(2, targetBitLength) - 1
-        // is also mask
+        readonly int BitLength;
+
+        /// <summary>
+        /// Mathf.Pow(1, targetBitLength) - 1
+        /// <para>
+        /// Can also be used as mask
+        /// </para>
+        /// </summary>
         readonly uint UintMax;
 
-
+        /// <summary>
+        /// bit count per element writen
+        /// </summary>
         public readonly int bitCountPerElement;
+
+        /// <summary>
+        /// total bit count for Quaternion
+        /// <para>
+        /// count = 3 * perElement + 2;
+        /// </para>
+        /// </summary>
         public readonly int bitCount;
 
-
-        public QuaternionPacker(int quaternionBitLength)
+        /// <param name="quaternionBitLength">10 per "smallest 3" is good enough for most people</param>
+        public QuaternionPacker(int quaternionBitLength = 10)
         {
             this.BitLength = quaternionBitLength;
-            this.UintMax = (1u << this.BitLength) - 1u;
+            // (this.BitLength - 1) because pack sign by itself
+            this.UintMax = (1u << (this.BitLength - 1)) - 1u;
             this.bitCountPerElement = quaternionBitLength;
             this.bitCount = 2 + (quaternionBitLength * 3);
         }
@@ -51,14 +68,10 @@ namespace JamesFrowen.BitPacking
                 c = -c;
             }
 
-            var ua = Compression.ScaleToUInt(a, MinValue, MaxValue, 0, this.UintMax);
-            var ub = Compression.ScaleToUInt(b, MinValue, MaxValue, 0, this.UintMax);
-            var uc = Compression.ScaleToUInt(c, MinValue, MaxValue, 0, this.UintMax);
-
             writer.Write((uint)index, 2);
-            writer.Write(ua, this.BitLength);
-            writer.Write(ub, this.BitLength);
-            writer.Write(uc, this.BitLength);
+            writer.WriteFloatSigned(a, MaxValue, this.UintMax, this.BitLength);
+            writer.WriteFloatSigned(b, MaxValue, this.UintMax, this.BitLength);
+            writer.WriteFloatSigned(c, MaxValue, this.UintMax, this.BitLength);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -162,13 +175,10 @@ namespace JamesFrowen.BitPacking
             Quaternion result;
 
             var index = reader.Read(2);
-            var ua = reader.Read(this.BitLength);
-            var ub = reader.Read(this.BitLength);
-            var uc = reader.Read(this.BitLength);
 
-            var a = Compression.ScaleFromUInt(ua, MinValue, MaxValue, 0, this.UintMax);
-            var b = Compression.ScaleFromUInt(ub, MinValue, MaxValue, 0, this.UintMax);
-            var c = Compression.ScaleFromUInt(uc, MinValue, MaxValue, 0, this.UintMax);
+            var a = reader.ReadFloatSigned(MaxValue, this.UintMax, this.BitLength);
+            var b = reader.ReadFloatSigned(MaxValue, this.UintMax, this.BitLength);
+            var c = reader.ReadFloatSigned(MaxValue, this.UintMax, this.BitLength);
 
             result = FromSmallerDimensions(index, a, b, c);
 

@@ -18,6 +18,47 @@ namespace JamesFrowen.BitPacking
         {
             return reader.Read(1) == 1u;
         }
+
+        /// <summary>
+        /// Writes float in range -max to +max, uses first bit to say the sign of value
+        /// <para>sign bit: false is positive, true is negative</para>
+        /// </summary>
+        /// <param name="writer"></param>
+        /// <param name="value"></param>
+        /// <param name="signedMaxFloat"></param>
+        /// <param name="maxUint"></param>
+        /// <param name="bitCount"></param>
+        public static void WriteFloatSigned(this BitWriter writer, float value, float signedMaxFloat, uint maxUint, int bitCount)
+        {
+            // 1 bit for sign
+            var bitValueCount = bitCount - 1;
+
+            if (value < 0)
+            {
+                writer.WriteBool(true);
+                value = -value;
+            }
+            else
+            {
+                writer.WriteBool(false);
+            }
+
+            var uValue = Compression.ScaleToUInt(value, 0, signedMaxFloat, 0, maxUint);
+            writer.Write(uValue, bitValueCount);
+        }
+
+        public static float ReadFloatSigned(this BitReader reader, float maxFloat, uint maxUint, int bitCount)
+        {
+            // 1 bit for sign
+            var bitValueCount = bitCount - 1;
+
+            var signBit = reader.ReadBool();
+            var valueBits = reader.Read(bitValueCount);
+
+            var fValue = Compression.ScaleFromUInt(valueBits, 0, maxFloat, 0, maxUint);
+
+            return signBit ? -fValue : fValue;
+        }
     }
     public class BitWriter
     {
