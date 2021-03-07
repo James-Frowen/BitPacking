@@ -1,8 +1,7 @@
 {
     "name": "JamesFrowen.BitPacking.Tests",
     "references": [
-        "JamesFrowen.BitPacking",
-        "Mirror"
+        "JamesFrowen.BitPacking"
     ],
     "optionalUnityReferences": [
         "TestAssemblies"

@@ -17,6 +17,10 @@ namespace JamesFrowen.BitPacking
 
         public readonly uint MaxValue;
 
+        // for debugging
+        public readonly int minBitCount;
+        public readonly int maxBitCount;
+
         public UIntVariablePacker(int smallBitCount, int mediumBitCount, int largeBitCount)
         {
             this.smallBitCount = smallBitCount;
@@ -28,6 +32,9 @@ namespace JamesFrowen.BitPacking
             this.largeMax = 1u << largeBitCount;
 
             this.MaxValue = this.largeMax - 1;
+
+            this.minBitCount = smallBitCount + 1;
+            this.maxBitCount = largeBitCount + 2;
         }
 
         public void Pack(BitWriter writer, uint value)
@@ -73,6 +80,29 @@ namespace JamesFrowen.BitPacking
                 {
                     return reader.Read(this.largeBitCount);
                 }
+            }
+        }
+
+        public void PackNullable(BitWriter writer, uint? value)
+        {
+            var hasValue = value.HasValue;
+            writer.WriteBool(hasValue);
+            if (hasValue)
+            {
+                this.Pack(writer, value.Value);
+            }
+        }
+
+        public uint? UnpackNullable(BitReader reader)
+        {
+            var hasValue = reader.ReadBool();
+            if (hasValue)
+            {
+                return this.Unpack(reader);
+            }
+            else
+            {
+                return null;
             }
         }
     }
