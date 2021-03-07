@@ -90,21 +90,28 @@ namespace JamesFrowen.BitPacking
 
             var mask = (1ul << inBits) - 1;
             var maskedValue = mask & inValue;
-            // writeBit= 188
-            // remainder = 60
+            // writeBit  => n         eg 188
+            // remainder => r = n%64  eg 188%64 = 60
             var remainder = this.writeBit & 0b11_1111;
-            // true
-            var isOver32 = (remainder >> 5) == 1;
 
-            // shifted 60, only writes first 4 bits
+            // left shift by remainder
+            //           => << r      eg 4 bits + 60 zeros on right (DCBA000...000)
             var value = maskedValue << remainder;
-            // write first 4 to first ulong
+
+            // write new value to buffer
+            //           =>           eg writes 4 new bits
             *(this.ulongPtr + (this.writeBit >> 6)) |= value;
 
+            // is remainder over 1/2 ulong
+            //           => r > 32    eg 60>32 = true
+            var isOver32 = (remainder >> 5) == 1;
             if (isOver32)
             {
-                // shift to remove first 4
+                // right shift by (64 - remainder)
+                // this will remove value already written to first ulong
+                //       => (64-r)    eg 64-60 = 4, FEDCBA -> 0000FE
                 var v2 = maskedValue >> (64 - remainder);
+
                 // write rest to second ulong
                 *(this.ulongPtr + (this.writeBit >> 6) + 1) |= v2;
             }
