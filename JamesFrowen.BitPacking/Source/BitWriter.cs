@@ -78,7 +78,9 @@ namespace JamesFrowen.BitPacking
         {
             // todo does this check cost performance
             this.ThrowIfDisposed();
-            if (inBits == 0) { throw new ArgumentException("inBits should not be zero", nameof(inBits)); }
+            // writing 0 is ok, but do nothing
+            // 0 is allowed so that people creating inBits=0 from code dont have to deal with errors
+            if (inBits == 0) { return; }
 
             const int MaxWriteSize = 32;
             if (inBits > MaxWriteSize) { throw new ArgumentException($"inBits should not be greater than {MaxWriteSize}", nameof(inBits)); }

@@ -31,6 +31,12 @@ namespace JamesFrowen.BitPacking
 
         public unsafe uint Read(int inBits)
         {
+            // reading 0 is ok, but do nothing
+            if (inBits == 0)
+            {
+                return 0;
+            }
+
             if (inBits > MaxReadSize)
             {
                 throw new ArgumentException($"bits must be less than {MaxReadSize}");
