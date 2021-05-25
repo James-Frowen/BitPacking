@@ -15,7 +15,7 @@ namespace JamesFrowen.BitPacking
         /// <param name="maxUint">should be a power of 2, for example 1 &lt;&lt; 8 for value to take up 8 bytes</param>
         /// <returns></returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static uint ScaleToUInt(float value, float minFloat, float maxFloat, uint minUint, uint maxUint)
+        public static ulong ScaleToUInt(float value, float minFloat, float maxFloat, uint minUint, uint maxUint)
         {
             // if out of range return min/max
             if (value > maxFloat) { return maxUint; }
@@ -42,7 +42,7 @@ namespace JamesFrowen.BitPacking
         /// <param name="maxUint">should be a power of 2, for example 1 &lt;&lt; 8 for value to take up 8 bytes</param>
         /// <returns></returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static float ScaleFromUInt(uint value, float minFloat, float maxFloat, uint minUint, uint maxUint)
+        public static float ScaleFromUInt(ulong value, float minFloat, float maxFloat, uint minUint, uint maxUint)
         {
             // if out of range return min/max
             if (value > maxUint) { return maxFloat; }

@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace JamesFrowen.BitPacking.Tests
 {
-    public class FloatPackerTests
+    public class FloatPackerTests : BitWirterTestBase
     {
         private const int BufferSize = 1000;
 
@@ -24,8 +24,8 @@ namespace JamesFrowen.BitPacking.Tests
             var writer = new BitWriter(BufferSize);
             packer.Pack(writer, inValue);
 
-            var reader = new BitReader(writer.ToArray());
-            var outValue = packer.Unpack(reader);
+            this.reader.CopyToBuffer(this.writer.ToArray());
+            var outValue = packer.Unpack(this.reader);
 
 
             Assert.That(outValue, Is.Not.NaN, "x was NaN");

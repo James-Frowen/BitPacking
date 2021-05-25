@@ -7,8 +7,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JamesFrowen.BitPacking", "J
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JamesFrowen.BitPacking.Tests", "JamesFrowen.BitPacking.Tests\JamesFrowen.BitPacking.Tests.csproj", "{A5308AB2-1557-4AEE-A9B9-F4C5CD23AEAB}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JamesFrowen.BitPacking.Benchmark", "JamesFrowen.BitPacking.Benchmark\JamesFrowen.BitPacking.Benchmark.csproj", "{089A7F04-0C67-453B-B9B6-9DB459FC238F}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -43,18 +41,6 @@ Global
 		{A5308AB2-1557-4AEE-A9B9-F4C5CD23AEAB}.Release|x64.Build.0 = Release|Any CPU
 		{A5308AB2-1557-4AEE-A9B9-F4C5CD23AEAB}.Release|x86.ActiveCfg = Release|Any CPU
 		{A5308AB2-1557-4AEE-A9B9-F4C5CD23AEAB}.Release|x86.Build.0 = Release|Any CPU
-		{089A7F04-0C67-453B-B9B6-9DB459FC238F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{089A7F04-0C67-453B-B9B6-9DB459FC238F}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{089A7F04-0C67-453B-B9B6-9DB459FC238F}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{089A7F04-0C67-453B-B9B6-9DB459FC238F}.Debug|x64.Build.0 = Debug|Any CPU
-		{089A7F04-0C67-453B-B9B6-9DB459FC238F}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{089A7F04-0C67-453B-B9B6-9DB459FC238F}.Debug|x86.Build.0 = Debug|Any CPU
-		{089A7F04-0C67-453B-B9B6-9DB459FC238F}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{089A7F04-0C67-453B-B9B6-9DB459FC238F}.Release|Any CPU.Build.0 = Release|Any CPU
-		{089A7F04-0C67-453B-B9B6-9DB459FC238F}.Release|x64.ActiveCfg = Release|Any CPU
-		{089A7F04-0C67-453B-B9B6-9DB459FC238F}.Release|x64.Build.0 = Release|Any CPU
-		{089A7F04-0C67-453B-B9B6-9DB459FC238F}.Release|x86.ActiveCfg = Release|Any CPU
-		{089A7F04-0C67-453B-B9B6-9DB459FC238F}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

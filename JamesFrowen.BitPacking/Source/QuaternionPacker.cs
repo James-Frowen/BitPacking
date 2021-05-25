@@ -185,7 +185,7 @@ namespace JamesFrowen.BitPacking
             return result;
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        static Quaternion FromSmallerDimensions(uint largestIndex, float a, float b, float c)
+        static Quaternion FromSmallerDimensions(ulong largestIndex, float a, float b, float c)
         {
             var l2 = 1 - ((a * a) + (b * b) + (c * c));
             var largest = (float)Math.Sqrt(l2);

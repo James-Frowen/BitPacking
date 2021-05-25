@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Runtime.CompilerServices;
-using UnityEngine;
 
 namespace JamesFrowen.BitPacking
 {
@@ -34,9 +33,9 @@ namespace JamesFrowen.BitPacking
             // plus 1 because range is inclusive
             range++;
 
-            var logBase2 = Mathf.Log(range, 2);
+            var logBase2 = Math.Log(range, 2);
 
-            return Mathf.CeilToInt(logBase2);
+            return (int)Math.Ceiling(logBase2);
         }
     }
 }

@@ -1,13 +1,12 @@
 using NUnit.Framework;
 using NUnit.Framework.Constraints;
-using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
 namespace JamesFrowen.BitPacking.Tests
 {
-    public class QuaternionPackerTests
+    public class QuaternionPackerTests : BitWirterTestBase
     {
         private const int BufferSize = 1000;
 
@@ -86,8 +85,8 @@ namespace JamesFrowen.BitPacking.Tests
             var writer = new BitWriter(BufferSize);
             packer.Pack(writer, inValue);
 
-            var reader = new BitReader(writer.ToArray());
-            var outValue = packer.Unpack(reader);
+            this.reader.CopyToBuffer(this.writer.ToArray());
+            var outValue = packer.Unpack(this.reader);
             //Debug.Log($"Packed: ({inValue.x:0.000},{inValue.y:0.000},{inValue.z:0.000},{inValue.w:0.000}) " +
             //          $"UnPacked: ({outValue.x:0.000},{outValue.y:0.000},{outValue.z:0.000},{outValue.w:0.000})");
 
@@ -137,41 +136,13 @@ namespace JamesFrowen.BitPacking.Tests
             return assertSign;
         }
 
-        [Test]
-        [Repeat(100)]
-        [Ignore("Requires mirror")]
-        public void PackerGivesSameValuesAsCompression()
-        {
-            var inValue = this.random.Quaternion();
-            var packer = new QuaternionPacker(10);
-            var outValuePacked = PackUnpack(inValue, packer);
-            var outValueCompressed = CompressDecompress(inValue);
-
-            Assert.That(QuaternionAlmostEqual(outValuePacked, outValueCompressed, 0.00001f),
-                $"Out Values should be the same, Angle:{Quaternion.Angle(outValuePacked, outValueCompressed)}\n" +
-                $"  packedFromIn: {Quaternion.Angle(inValue, outValuePacked)}\n" +
-                $"  compreFromIn: {Quaternion.Angle(inValue, outValueCompressed)}\n" +
-                $"  inValue: {inValue}\n" +
-                $"  outValuePacked: {outValuePacked}\n" +
-                $"  outValueCompressed: {outValueCompressed}\n"
-                );
-        }
-
-        private static Quaternion CompressDecompress(Quaternion inValue)
-        {
-            throw new NotSupportedException("Requires mirror");
-            //netWriter.WriteUInt32(Compression.CompressQuaternion(inValue));
-
-            //return Compression.DecompressQuaternion(netReader.ReadUInt32());
-        }
-
-        private static Quaternion PackUnpack(Quaternion inValue, QuaternionPacker packer)
+        private Quaternion PackUnpack(Quaternion inValue, QuaternionPacker packer)
         {
             var writer = new BitWriter(BufferSize);
             packer.Pack(writer, inValue);
 
-            var reader = new BitReader(writer.ToArray());
-            return packer.Unpack(reader);
+            this.reader.CopyToBuffer(this.writer.ToArray());
+            return packer.Unpack(this.reader);
         }
 
 

@@ -1,7 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
+	
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
+	<GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -19,7 +20,7 @@
 
   <ItemGroup>
     <Reference Include="UnityEngine">
-      <HintPath>G:\UnityEditors\2018.4.30f1\Editor\Data\Managed\UnityEngine.dll</HintPath>
+      <HintPath>..\..\..\..\UnityEditors\2019.4.14f1\Editor\Data\Managed\UnityEngine.dll</HintPath>
     </Reference>
   </ItemGroup>
 

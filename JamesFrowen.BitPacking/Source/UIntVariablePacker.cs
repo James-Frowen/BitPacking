@@ -11,11 +11,11 @@ namespace JamesFrowen.BitPacking
         readonly int mediumBitCount;
         readonly int largeBitCount;
         // exclusive max
-        readonly uint smallMax;
-        readonly uint mediumMax;
-        readonly uint largeMax;
+        readonly ulong smallMax;
+        readonly ulong mediumMax;
+        readonly ulong largeMax;
 
-        public readonly uint MaxValue;
+        public readonly ulong MaxValue;
 
         // for debugging
         public readonly int minBitCount;
@@ -62,7 +62,7 @@ namespace JamesFrowen.BitPacking
             }
         }
 
-        public uint Unpack(BitReader reader)
+        public ulong Unpack(BitReader reader)
         {
             var a = reader.Read(1);
             if (a == 0)
@@ -93,7 +93,7 @@ namespace JamesFrowen.BitPacking
             }
         }
 
-        public uint? UnpackNullable(BitReader reader)
+        public ulong? UnpackNullable(BitReader reader)
         {
             var hasValue = reader.ReadBool();
             if (hasValue)

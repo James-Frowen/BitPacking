@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace JamesFrowen.BitPacking.Tests
 {
-    public class PositionPackerTests
+    public class PositionPackerTests : BitWirterTestBase
     {
         private const int BufferSize = 1000;
 
@@ -31,8 +31,8 @@ namespace JamesFrowen.BitPacking.Tests
             var writer = new BitWriter(BufferSize);
             packer.Pack(writer, inValue);
 
-            var reader = new BitReader(writer.ToArray());
-            var outValue = packer.Unpack(reader);
+            this.reader.CopyToBuffer(this.writer.ToArray());
+            var outValue = packer.Unpack(this.reader);
 
             var debugMessage = $"in{inValue} out{outValue}";
             Assert.That(outValue.x, Is.EqualTo(inValue.x).Within(precision), debugMessage);
@@ -51,7 +51,7 @@ namespace JamesFrowen.BitPacking.Tests
             var writer = new BitWriter(BufferSize);
             packer.Pack(writer, inValue);
 
-            Assert.That(writer.ByteLength, Is.EqualTo(writeCount));
+            Assert.That(writer.GetByteCount(), Is.EqualTo(writeCount));
         }
 
         [Test]
@@ -64,10 +64,10 @@ namespace JamesFrowen.BitPacking.Tests
             var writer = new BitWriter(BufferSize);
             packer.Pack(writer, inValue);
 
-            var reader = new BitReader(writer.ToArray());
-            var outValue = packer.Unpack(reader);
+            this.reader.CopyToBuffer(this.writer.ToArray());
+            var outValue = packer.Unpack(this.reader);
 
-            Assert.That(reader.Position, Is.EqualTo(readCount));
+            Assert.That(this.reader.Debug_WorldIndex, Is.EqualTo(readCount));
         }
 
 
