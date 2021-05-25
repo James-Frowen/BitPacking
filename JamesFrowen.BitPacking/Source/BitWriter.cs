@@ -19,24 +19,29 @@ namespace JamesFrowen.BitPacking
 
         public BitWriter(int byteCapacity)
         {
-            var ulongSize = (int)Math.Ceiling(byteCapacity / (float)sizeof(ulong));
+            int ulongSize = (int)Math.Ceiling(byteCapacity / (float)sizeof(ulong));
             this.byteCapacity = ulongSize * sizeof(ulong);
-            this.buffer = new ulong[ulongSize];
+            buffer = new ulong[ulongSize];
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal int GetBitCount()
+        {
+            return wordCount * sizeof(ulong) * 8 + bitsInWord;
+        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal int GetByteCount()
         {
-            return this.wordCount * sizeof(ulong) + (int)Math.Ceiling(this.bitsInWord / 8f);
+            return wordCount * sizeof(ulong) + (int)Math.Ceiling(bitsInWord / 8f);
         }
 
-        /// <summary>
+        /// <summary>   
         /// Resets length
         /// </summary>
         public void Reset()
         {
-            this.bitsInWord = 0;
-            this.wordCount = 0;
+            bitsInWord = 0;
+            wordCount = 0;
         }
 
 
@@ -46,16 +51,16 @@ namespace JamesFrowen.BitPacking
         /// <returns></returns>
         public byte[] ToArray()
         {
-            var byteLength = this.GetByteCount();
-            var data = new byte[byteLength];
-            Buffer.BlockCopy(this.buffer, 0, data, 0, byteLength);
+            int byteLength = GetByteCount();
+            byte[] data = new byte[byteLength];
+            Buffer.BlockCopy(buffer, 0, data, 0, byteLength);
             return data;
         }
 
         public int CopyToBuffer(byte[] outArray, int outOffset)
         {
-            var byteLength = this.GetByteCount();
-            Buffer.BlockCopy(this.buffer, 0, outArray, outOffset, byteLength);
+            int byteLength = GetByteCount();
+            Buffer.BlockCopy(buffer, 0, outArray, outOffset, byteLength);
             return byteLength;
         }
 
@@ -67,24 +72,24 @@ namespace JamesFrowen.BitPacking
         public void Write(ulong value, int bits)
         {
             // write first part to current word
-            this.buffer[this.wordCount] |= value << this.bitsInWord;
+            buffer[wordCount] |= value << bitsInWord;
 
             // if too long write to next word
-            var nextBits = (this.bitsInWord + bits);
+            int nextBits = (bitsInWord + bits);
             if (nextBits >= WORD_SIZE)
             {
-                this.wordCount++;
+                wordCount++;
                 if (nextBits != WORD_SIZE)
                 {
                     // if nextBits is exactly 64, then we increment index,
                     // and write to buffer even tho 0 useful bits will be written
                     // todo test performance of write (below) vs if>WORD_SIZE
-                    this.buffer[this.wordCount] = value >> (WORD_SIZE - this.bitsInWord);
+                    buffer[wordCount] = value >> (WORD_SIZE - bitsInWord);
                 }
             }
 
             // set bits, ensure it is less than 64
-            this.bitsInWord = (nextBits & WORD_BITS_MASK);
+            bitsInWord = (nextBits & WORD_BITS_MASK);
         }
 
         /// <summary>
@@ -93,8 +98,8 @@ namespace JamesFrowen.BitPacking
         /// </summary>
         public void PadToNextByte()
         {
-            var bits = 8 - (this.bitsInWord & 0b111);
-            this.Write(0, bits);
+            int bits = 8 - (bitsInWord & 0b111);
+            Write(0, bits);
         }
 
         /// <summary>
@@ -105,20 +110,20 @@ namespace JamesFrowen.BitPacking
         /// <param name="length"></param>
         public void WriteBytes(byte[] src, int srcOffset, int length)
         {
-            this.PadToNextByte();
+            PadToNextByte();
 
-            var dstOffset = this.GetByteCount();
-            var end = dstOffset + length;
-            if (end > this.byteCapacity)
+            int dstOffset = GetByteCount();
+            int end = dstOffset + length;
+            if (end > byteCapacity)
             {
                 throw new IndexOutOfRangeException($"No room in buffer to write {length} bytes, Current ByteCount: {dstOffset}");
             }
 
-            Buffer.BlockCopy(src, srcOffset, this.buffer, dstOffset, length);
+            Buffer.BlockCopy(src, srcOffset, buffer, dstOffset, length);
 
-            var newBits = this.bitsInWord + (length * 8);
-            this.wordCount += newBits >> WORD_BITS_SHIFT;
-            this.bitsInWord = newBits & WORD_BITS_MASK;
+            int newBits = bitsInWord + (length * 8);
+            wordCount += newBits >> WORD_BITS_SHIFT;
+            bitsInWord = newBits & WORD_BITS_MASK;
         }
     }
 }

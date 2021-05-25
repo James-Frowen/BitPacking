@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Runtime.CompilerServices;
 
@@ -24,66 +24,69 @@ namespace JamesFrowen.BitPacking
         int wordIndex;
 
 
-        internal int Debug_BitsInWord => this.bitsInWord;
-        internal int Debug_WorldIndex => this.wordIndex;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int GetBitPosition()
+        {
+            return wordIndex * 64 + bitsInWord;
+        }
 
         public BitReader(int byteCapacity)
         {
-            var ulongSize = (int)Math.Ceiling(byteCapacity / (float)sizeof(ulong));
+            int ulongSize = (int)Math.Ceiling(byteCapacity / (float)sizeof(ulong));
             this.byteCapacity = ulongSize * sizeof(ulong);
-            this.buffer = new ulong[ulongSize];
+            buffer = new ulong[ulongSize];
         }
 
         /// <summary>
         /// Copies bytes from <paramref name="segment"/> to internal buffer
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void CopyToBuffer(ArraySegment<byte> segment) => this.CopyToBuffer(segment.Array, segment.Offset, segment.Count);
+        public void CopyToBuffer(ArraySegment<byte> segment) => CopyToBuffer(segment.Array, segment.Offset, segment.Count);
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void CopyToBuffer(byte[] arry) => this.CopyToBuffer(arry, 0, arry.Length);
+        public void CopyToBuffer(byte[] arry) => CopyToBuffer(arry, 0, arry.Length);
         /// <summary>
         /// Copies bytes from <paramref name="array"/> to internal buffer
         /// </summary>
         public void CopyToBuffer(byte[] array, int offset, int length)
         {
-            if (length > this.byteCapacity) throw new ArgumentException($"Length is over capacity of NetworkReader buffer, Length {length}, Capacity: {this.byteCapacity}", nameof(length));
-            this.byteCount = length;
-            this.wordCount = (int)Math.Ceiling(length / (float)sizeof(ulong));
-            Buffer.BlockCopy(array, offset, this.buffer, 0, length);
+            if (length > byteCapacity) throw new ArgumentException($"Length is over capacity of NetworkReader buffer, Length {length}, Capacity: {byteCapacity}", nameof(length));
+            byteCount = length;
+            wordCount = (int)Math.Ceiling(length / (float)sizeof(ulong));
+            Buffer.BlockCopy(array, offset, buffer, 0, length);
 
-            this.bitsInWord = 0;
-            this.wordIndex = 0;
+            bitsInWord = 0;
+            wordIndex = 0;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         ulong BufferRead(int index)
         {
-            if (index > this.wordCount) throw new EndOfStreamException();
-            return this.buffer[index];
+            if (index > wordCount) throw new EndOfStreamException();
+            return buffer[index];
         }
 
         public ulong Read(int bits)
         {
-            var value = this.BufferRead(this.wordIndex) >> this.bitsInWord;
+            ulong value = BufferRead(wordIndex) >> bitsInWord;
 
-            var nextBits = (this.bitsInWord + bits);
+            int nextBits = (bitsInWord + bits);
             if (nextBits >= WORD_SIZE)
             {
-                this.wordIndex++;
+                wordIndex++;
 
                 // if no more bits to read, then dont read incase of indexoutofbounds
                 if (nextBits != WORD_SIZE)
                 {
 
-                    value |= this.BufferRead(this.wordIndex) << (WORD_SIZE - this.bitsInWord);
+                    value |= BufferRead(wordIndex) << (WORD_SIZE - bitsInWord);
                 }
             }
 
             // set bits, ensure it is less than 64
-            this.bitsInWord = (nextBits & WORD_BITS_MASK);
+            bitsInWord = (nextBits & WORD_BITS_MASK);
 
             // enure value isn't over expected size
-            var mask = ulong.MaxValue >> (WORD_SIZE - bits);
+            ulong mask = ulong.MaxValue >> (WORD_SIZE - bits);
             return value & mask;
         }
 
@@ -93,8 +96,8 @@ namespace JamesFrowen.BitPacking
         /// </summary>
         public void PadToNextByte()
         {
-            var bits = 8 - (this.bitsInWord & 0b111);
-            _ = this.Read(bits);
+            int bits = 8 - (bitsInWord & 0b111);
+            _ = Read(bits);
         }
 
         /// <summary>
@@ -105,20 +108,20 @@ namespace JamesFrowen.BitPacking
         /// <param name="length"></param>
         public void ReadBytes(byte[] dst, int dstOffset, int length)
         {
-            this.PadToNextByte();
+            PadToNextByte();
 
-            var srcOffset = this.wordIndex;
-            var end = srcOffset + length;
-            if (end > this.byteCount)
+            int srcOffset = wordIndex;
+            int end = srcOffset + length;
+            if (end > byteCount)
             {
                 throw new EndOfStreamException($"Not enough bytes in buffer to read {length} bytes, Current ByteCount: {srcOffset}");
             }
 
-            Buffer.BlockCopy(this.buffer, srcOffset, dst, dstOffset, length);
+            Buffer.BlockCopy(buffer, srcOffset, dst, dstOffset, length);
 
-            var newBits = this.bitsInWord + (length * 8);
-            this.wordCount += newBits >> WORD_BITS_SHIFT;
-            this.bitsInWord = newBits & WORD_BITS_MASK;
+            int newBits = bitsInWord + (length * 8);
+            wordCount += newBits >> WORD_BITS_SHIFT;
+            bitsInWord = newBits & WORD_BITS_MASK;
         }
     }
 }

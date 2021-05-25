@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace JamesFrowen.BitPacking.Tests
 {
-    public class QuaternionPackerTests : BitWirterTestBase
+    public class QuaternionPackerTests : BitWriterTestBase
     {
         private const int BufferSize = 1000;
 
@@ -82,7 +82,6 @@ namespace JamesFrowen.BitPacking.Tests
 
             var packer = new QuaternionPacker(bits);
 
-            var writer = new BitWriter(BufferSize);
             packer.Pack(writer, inValue);
 
             this.reader.CopyToBuffer(this.writer.ToArray());
@@ -138,7 +137,6 @@ namespace JamesFrowen.BitPacking.Tests
 
         private Quaternion PackUnpack(Quaternion inValue, QuaternionPacker packer)
         {
-            var writer = new BitWriter(BufferSize);
             packer.Pack(writer, inValue);
 
             this.reader.CopyToBuffer(this.writer.ToArray());

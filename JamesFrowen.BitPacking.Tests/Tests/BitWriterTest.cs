@@ -1,9 +1,9 @@
-using NUnit.Framework;
 using System.Linq;
+using NUnit.Framework;
 
 namespace JamesFrowen.BitPacking.Tests
 {
-    public abstract class BitWirterTestBase
+    public abstract class BitWriterTestBase
     {
         private const int BufferSize = 1200;
         protected BitWriter writer;
@@ -12,20 +12,20 @@ namespace JamesFrowen.BitPacking.Tests
         [SetUp]
         public void SetUp()
         {
-            this.writer = new BitWriter(BufferSize);
-            this.reader = new BitReader(BufferSize);
+            writer = new BitWriter(BufferSize);
+            reader = new BitReader(BufferSize);
         }
 
 
         [TearDown]
         public void TearDown()
         {
-            this.writer = null;
-            this.reader = null;
+            writer = null;
+            reader = null;
         }
     }
 
-    public class BitWriterTest : BitWirterTestBase
+    public class BitWriterTest : BitWriterTestBase
     {
         const int max = (1 << 10) - 1;
 
@@ -36,31 +36,31 @@ namespace JamesFrowen.BitPacking.Tests
         {
             uint bits1 = 0b1011;
             uint bits2 = 0b10_0111_1001;
-            var expected1 = (byte)bits1;
+            byte expected1 = (byte)bits1;
             byte expected2_1 = 0b1001_1011;
             byte expected2_2 = 0b10_0111;
 
             {
-                Assert.That(this.writer.GetByteCount(), Is.Zero, "Should start at length 0");
-                this.writer.Write(bits1, 4);
+                Assert.That(writer.GetByteCount(), Is.Zero, "Should start at length 0");
+                writer.Write(bits1, 4);
 
-                Assert.That(this.writer.GetByteCount(), Is.EqualTo(1), "should have length 1 after writing 4 bits");
+                Assert.That(writer.GetByteCount(), Is.EqualTo(1), "should have length 1 after writing 4 bits");
 
-                var array = this.writer.ToArray();
+                byte[] array = writer.ToArray();
                 Assert.That(array.Count, Is.EqualTo(1), "segment length should by 1 after writing 4 bits");
-                var first = array[0];
+                byte first = array[0];
 
                 Assert.That(first, Is.EqualTo(expected1));
             }
 
             {
-                this.writer.Write(bits2, 10);
-                Assert.That(this.writer.GetByteCount(), Is.EqualTo(2), "should have length 2 after writing 14 bits");
+                writer.Write(bits2, 10);
+                Assert.That(writer.GetByteCount(), Is.EqualTo(2), "should have length 2 after writing 14 bits");
 
-                var array = this.writer.ToArray();
+                byte[] array = writer.ToArray();
                 Assert.That(array.Count, Is.EqualTo(2), "segment length should by 2 after writing 14 bits");
-                var first = array[0];
-                var second = array[1];
+                byte first = array[0];
+                byte second = array[1];
 
                 Assert.That(first, Is.EqualTo(expected2_1));
                 Assert.That(second, Is.EqualTo(expected2_2));
@@ -71,29 +71,27 @@ namespace JamesFrowen.BitPacking.Tests
         public void ReadsCorrectBits()
         {
             // numbers from WritesCorrectBits
-            var buffers = new byte[10];
+            byte[] buffers = new byte[10];
             buffers[0] = 0b1001_1011;
             buffers[1] = 0b10_0111;
 
             uint expected1 = 0b1011;
-            var count1 = 4;
+            int count1 = 4;
             uint expected2 = 0b10_0111_1001;
-            var count2 = 10;
+            int count2 = 10;
 
-            this.reader.CopyToBuffer(buffers, 0, buffers.Length);
+            reader.CopyToBuffer(buffers, 0, buffers.Length);
 
             {
-                var value = this.reader.Read(count1);
-                Assert.That(this.reader.Debug_WorldIndex, Is.Zero, "position should be 0 untill whole of first byte has been read");
-                Assert.That(this.reader.Debug_BitsInWord, Is.EqualTo(count1));
+                ulong value = reader.Read(count1);
+                Assert.That(reader.GetBitPosition(), Is.EqualTo(count1));
 
                 Assert.That(value, Is.EqualTo(expected1));
             }
 
             {
-                var value = this.reader.Read(count2);
-                Assert.That(this.reader.Debug_WorldIndex, Is.EqualTo(1), "position should be 1 after reading first whole byte");
-                Assert.That(this.reader.Debug_BitsInWord, Is.EqualTo(count1 + count2));
+                ulong value = reader.Read(count2);
+                Assert.That(reader.GetBitPosition(), Is.EqualTo(count1 + count2));
 
                 Assert.That(value, Is.EqualTo(expected2));
             }
@@ -109,7 +107,7 @@ namespace JamesFrowen.BitPacking.Tests
             uint bits3 = 0b11_0101__0011_0001__0101_1001__1101_1010;
 
 
-            var expected1 = new byte[] {
+            byte[] expected1 = new byte[] {
                 0b01111000,
                 0b01010110,
                 0b00110100,
@@ -117,7 +115,7 @@ namespace JamesFrowen.BitPacking.Tests
             };
 
             // reverse because array is left to right, but bits above are right to left.
-            var expected2 = new byte[] {
+            byte[] expected2 = new byte[] {
                 0b00000110,
                 0b10101111,
                 0b00110111,
@@ -129,7 +127,7 @@ namespace JamesFrowen.BitPacking.Tests
                 0b01111000
             }.Reverse().ToArray();
 
-            var expected3 = new byte[] {
+            byte[] expected3 = new byte[] {
                 0b00000011,
                 0b01010011,
                 0b00010101,
@@ -149,40 +147,40 @@ namespace JamesFrowen.BitPacking.Tests
 
 
             {
-                Assert.That(this.writer.GetByteCount(), Is.Zero, "Should start at length 0");
-                this.writer.Write(bits1, 30);
+                Assert.That(writer.GetByteCount(), Is.Zero, "Should start at length 0");
+                writer.Write(bits1, 30);
 
-                Assert.That(this.writer.GetByteCount(), Is.EqualTo(4), "should have length 4 after writing 30 bits");
+                Assert.That(writer.GetByteCount(), Is.EqualTo(4), "should have length 4 after writing 30 bits");
 
-                var array = this.writer.ToArray();
+                byte[] array = writer.ToArray();
                 Assert.That(array.Count, Is.EqualTo(4), "segment length should by 4 after writing 30 bits");
-                for (var i = 0; i < 4; i++)
+                for (int i = 0; i < 4; i++)
                 {
                     Assert.That(array[i], Is.EqualTo(expected1[i]));
                 }
             }
 
             {
-                this.writer.Write(bits2, 30);
+                writer.Write(bits2, 30);
 
-                Assert.That(this.writer.GetByteCount(), Is.EqualTo(8), "should have length 8 after writing 60 bits");
+                Assert.That(writer.GetByteCount(), Is.EqualTo(8), "should have length 8 after writing 60 bits");
 
-                var array = this.writer.ToArray();
+                byte[] array = writer.ToArray();
                 Assert.That(array.Count, Is.EqualTo(8), "segment length should by 8 after writing 60 bits");
-                for (var i = 0; i < 8; i++)
+                for (int i = 0; i < 8; i++)
                 {
                     Assert.That(array[i], Is.EqualTo(expected2[i]));
                 }
             }
 
             {
-                this.writer.Write(bits3, 30);
+                writer.Write(bits3, 30);
 
-                Assert.That(this.writer.GetByteCount(), Is.EqualTo(12), "should have length 12 after writing 90 bits");
+                Assert.That(writer.GetByteCount(), Is.EqualTo(12), "should have length 12 after writing 90 bits");
 
-                var array = this.writer.ToArray();
+                byte[] array = writer.ToArray();
                 Assert.That(array.Count, Is.EqualTo(12), "segment length should by 12 after writing 90 bits");
-                for (var i = 0; i < 12; i++)
+                for (int i = 0; i < 12; i++)
                 {
                     Assert.That(array[i], Is.EqualTo(expected3[i]));
                 }
@@ -193,7 +191,7 @@ namespace JamesFrowen.BitPacking.Tests
         public void ReadsCorrectBitsLong()
         {
             // values from WritesCorrectBitsLong
-            var buffers = new byte[] {
+            byte[] buffers = new byte[] {
                 0b00000011,
                 0b01010011,
                 0b00010101,
@@ -215,30 +213,27 @@ namespace JamesFrowen.BitPacking.Tests
             uint expected3 = 0b11_0101__0011_0001__0101_1001__1101_1010;
 
 
-            this.reader.CopyToBuffer(buffers, 0, buffers.Length);
+            reader.CopyToBuffer(buffers, 0, buffers.Length);
 
             const int readLength = 30;
 
             {
-                var value = this.reader.Read(readLength);
-                Assert.That(this.reader.Debug_WorldIndex, Is.EqualTo(readLength / 8), "position should be rounded down of bitposition");
-                Assert.That(this.reader.Debug_BitsInWord, Is.EqualTo(readLength));
+                ulong value = reader.Read(readLength);
+                Assert.That(reader.GetBitPosition(), Is.EqualTo(readLength));
 
                 Assert.That(value, Is.EqualTo(expected1));
             }
 
             {
-                var value = this.reader.Read(readLength);
-                Assert.That(this.reader.Debug_WorldIndex, Is.EqualTo(readLength * 2 / 8), "position should be rounded down of bitposition");
-                Assert.That(this.reader.Debug_BitsInWord, Is.EqualTo(readLength * 2));
+                ulong value = reader.Read(readLength);
+                Assert.That(reader.GetBitPosition(), Is.EqualTo(readLength * 2));
 
                 Assert.That(value, Is.EqualTo(expected2));
             }
 
             {
-                var value = this.reader.Read(readLength);
-                Assert.That(this.reader.Debug_WorldIndex, Is.EqualTo(readLength * 3 / 8), "position should be rounded down of bitposition");
-                Assert.That(this.reader.Debug_BitsInWord, Is.EqualTo(readLength * 3));
+                ulong value = reader.Read(readLength);
+                Assert.That(reader.GetBitPosition(), Is.EqualTo(readLength * 3));
 
                 Assert.That(value, Is.EqualTo(expected3));
             }
@@ -249,13 +244,13 @@ namespace JamesFrowen.BitPacking.Tests
         [Repeat(1000)]
         public void CanWrite32BitsRepeat()
         {
-            var inValue = this.random.Uint(0, int.MaxValue);
+            uint inValue = random.Uint(0, int.MaxValue);
 
-            this.writer.Write(inValue, 32);
+            writer.Write(inValue, 32);
 
-            this.reader.CopyToBuffer(this.writer.ToArray());
+            reader.CopyToBuffer(writer.ToArray());
 
-            var outValue = this.reader.Read(32);
+            ulong outValue = reader.Read(32);
 
             Assert.That(outValue, Is.EqualTo(inValue));
         }
@@ -264,19 +259,19 @@ namespace JamesFrowen.BitPacking.Tests
         [Repeat(1000)]
         public void CanWrite3MultipleValuesRepeat()
         {
-            var inValue1 = this.random.Uint(0, max);
-            var inValue2 = this.random.Uint(0, max);
-            var inValue3 = this.random.Uint(0, max);
+            uint inValue1 = random.Uint(0, max);
+            uint inValue2 = random.Uint(0, max);
+            uint inValue3 = random.Uint(0, max);
 
-            this.writer.Write(inValue1, 10);
-            this.writer.Write(inValue2, 10);
-            this.writer.Write(inValue3, 10);
+            writer.Write(inValue1, 10);
+            writer.Write(inValue2, 10);
+            writer.Write(inValue3, 10);
 
-            this.reader.CopyToBuffer(this.writer.ToArray());
+            reader.CopyToBuffer(writer.ToArray());
 
-            var outValue1 = this.reader.Read(10);
-            var outValue2 = this.reader.Read(10);
-            var outValue3 = this.reader.Read(10);
+            ulong outValue1 = reader.Read(10);
+            ulong outValue2 = reader.Read(10);
+            ulong outValue3 = reader.Read(10);
 
             Assert.That(outValue1, Is.EqualTo(inValue1), $"Failed [{inValue1},{inValue2},{inValue3}]");
             Assert.That(outValue2, Is.EqualTo(inValue2), $"Failed [{inValue1},{inValue2},{inValue3}]");
@@ -288,15 +283,15 @@ namespace JamesFrowen.BitPacking.Tests
         [TestCase(696u, 617u, 902u)]
         public void CanWrite3MultipleValues_FailingValues(uint inValue1, uint inValue2, uint inValue3)
         {
-            this.writer.Write(inValue1, 10);
-            this.writer.Write(inValue2, 10);
-            this.writer.Write(inValue3, 10);
+            writer.Write(inValue1, 10);
+            writer.Write(inValue2, 10);
+            writer.Write(inValue3, 10);
 
-            this.reader.CopyToBuffer(this.writer.ToArray());
+            reader.CopyToBuffer(writer.ToArray());
 
-            var outValue1 = this.reader.Read(10);
-            var outValue2 = this.reader.Read(10);
-            var outValue3 = this.reader.Read(10);
+            ulong outValue1 = reader.Read(10);
+            ulong outValue2 = reader.Read(10);
+            ulong outValue3 = reader.Read(10);
 
             Assert.That(outValue1, Is.EqualTo(inValue1), $"Failed [{inValue1},{inValue2},{inValue3}]");
             Assert.That(outValue2, Is.EqualTo(inValue2), $"Failed [{inValue1},{inValue2},{inValue3}]");
@@ -307,34 +302,34 @@ namespace JamesFrowen.BitPacking.Tests
         [Repeat(1000)]
         public void CanWrite8MultipleValuesRepeat()
         {
-            var inValue1 = this.random.Uint(0, max);
-            var inValue2 = this.random.Uint(0, max);
-            var inValue3 = this.random.Uint(0, max);
-            var inValue4 = this.random.Uint(0, max);
-            var inValue5 = this.random.Uint(0, max);
-            var inValue6 = this.random.Uint(0, max);
-            var inValue7 = this.random.Uint(0, max);
-            var inValue8 = this.random.Uint(0, max);
+            uint inValue1 = random.Uint(0, max);
+            uint inValue2 = random.Uint(0, max);
+            uint inValue3 = random.Uint(0, max);
+            uint inValue4 = random.Uint(0, max);
+            uint inValue5 = random.Uint(0, max);
+            uint inValue6 = random.Uint(0, max);
+            uint inValue7 = random.Uint(0, max);
+            uint inValue8 = random.Uint(0, max);
 
-            this.writer.Write(inValue1, 10);
-            this.writer.Write(inValue2, 10);
-            this.writer.Write(inValue3, 10);
-            this.writer.Write(inValue4, 10);
-            this.writer.Write(inValue5, 10);
-            this.writer.Write(inValue6, 10);
-            this.writer.Write(inValue7, 10);
-            this.writer.Write(inValue8, 10);
+            writer.Write(inValue1, 10);
+            writer.Write(inValue2, 10);
+            writer.Write(inValue3, 10);
+            writer.Write(inValue4, 10);
+            writer.Write(inValue5, 10);
+            writer.Write(inValue6, 10);
+            writer.Write(inValue7, 10);
+            writer.Write(inValue8, 10);
 
-            this.reader.CopyToBuffer(this.writer.ToArray());
+            reader.CopyToBuffer(writer.ToArray());
 
-            var outValue1 = this.reader.Read(10);
-            var outValue2 = this.reader.Read(10);
-            var outValue3 = this.reader.Read(10);
-            var outValue4 = this.reader.Read(10);
-            var outValue5 = this.reader.Read(10);
-            var outValue6 = this.reader.Read(10);
-            var outValue7 = this.reader.Read(10);
-            var outValue8 = this.reader.Read(10);
+            ulong outValue1 = reader.Read(10);
+            ulong outValue2 = reader.Read(10);
+            ulong outValue3 = reader.Read(10);
+            ulong outValue4 = reader.Read(10);
+            ulong outValue5 = reader.Read(10);
+            ulong outValue6 = reader.Read(10);
+            ulong outValue7 = reader.Read(10);
+            ulong outValue8 = reader.Read(10);
 
             Assert.That(outValue1, Is.EqualTo(inValue1), $"Failed [{inValue1},{inValue2},{inValue3},{inValue4},{inValue5},{inValue6},{inValue7},{inValue8}]");
             Assert.That(outValue2, Is.EqualTo(inValue2), $"Failed [{inValue1},{inValue2},{inValue3},{inValue4},{inValue5},{inValue6},{inValue7},{inValue8}]");
@@ -353,39 +348,39 @@ namespace JamesFrowen.BitPacking.Tests
         [TestCase(660u, 590u, 670u, 1014u, 121u, 743u, 228u, 126u)]
         public void CanWrite8MultipleValues_FailingValues(uint inValue1, uint inValue2, uint inValue3, uint inValue4, uint inValue5, uint inValue6, uint inValue7, uint inValue8)
         {
-            this.writer.Write(inValue1, 10);
-            this.writer.Write(inValue2, 10);
-            this.writer.Write(inValue3, 10);
-            this.writer.Write(inValue4, 10);
-            this.writer.Write(inValue5, 10);
-            this.writer.Write(inValue6, 10);
-            this.writer.Write(inValue7, 10);
-            this.writer.Write(inValue8, 10);
+            writer.Write(inValue1, 10);
+            writer.Write(inValue2, 10);
+            writer.Write(inValue3, 10);
+            writer.Write(inValue4, 10);
+            writer.Write(inValue5, 10);
+            writer.Write(inValue6, 10);
+            writer.Write(inValue7, 10);
+            writer.Write(inValue8, 10);
 
-            this.reader.CopyToBuffer(this.writer.ToArray());
+            reader.CopyToBuffer(writer.ToArray());
 
-            var outValue1 = this.reader.Read(10);
+            ulong outValue1 = reader.Read(10);
             Assert.That(outValue1, Is.EqualTo(inValue1), $"Failed [{inValue1},{inValue2},{inValue3},{inValue4},{inValue5},{inValue6},{inValue7},{inValue8}]");
 
-            var outValue2 = this.reader.Read(10);
+            ulong outValue2 = reader.Read(10);
             Assert.That(outValue2, Is.EqualTo(inValue2), $"Failed [{inValue1},{inValue2},{inValue3},{inValue4},{inValue5},{inValue6},{inValue7},{inValue8}]");
 
-            var outValue3 = this.reader.Read(10);
+            ulong outValue3 = reader.Read(10);
             Assert.That(outValue3, Is.EqualTo(inValue3), $"Failed [{inValue1},{inValue2},{inValue3},{inValue4},{inValue5},{inValue6},{inValue7},{inValue8}]");
 
-            var outValue4 = this.reader.Read(10);
+            ulong outValue4 = reader.Read(10);
             Assert.That(outValue4, Is.EqualTo(inValue4), $"Failed [{inValue1},{inValue2},{inValue3},{inValue4},{inValue5},{inValue6},{inValue7},{inValue8}]");
 
-            var outValue5 = this.reader.Read(10);
+            ulong outValue5 = reader.Read(10);
             Assert.That(outValue5, Is.EqualTo(inValue5), $"Failed [{inValue1},{inValue2},{inValue3},{inValue4},{inValue5},{inValue6},{inValue7},{inValue8}]");
 
-            var outValue6 = this.reader.Read(10);
+            ulong outValue6 = reader.Read(10);
             Assert.That(outValue6, Is.EqualTo(inValue6), $"Failed [{inValue1},{inValue2},{inValue3},{inValue4},{inValue5},{inValue6},{inValue7},{inValue8}]");
 
-            var outValue7 = this.reader.Read(10);
+            ulong outValue7 = reader.Read(10);
             Assert.That(outValue7, Is.EqualTo(inValue7), $"Failed [{inValue1},{inValue2},{inValue3},{inValue4},{inValue5},{inValue6},{inValue7},{inValue8}]");
 
-            var outValue8 = this.reader.Read(10);
+            ulong outValue8 = reader.Read(10);
             Assert.That(outValue8, Is.EqualTo(inValue8), $"Failed [{inValue1},{inValue2},{inValue3},{inValue4},{inValue5},{inValue6},{inValue7},{inValue8}]");
         }
 
@@ -394,15 +389,15 @@ namespace JamesFrowen.BitPacking.Tests
         public void CopiesValuesToSegment()
         {
             const int Count = 100;
-            var bytes = Enumerable.Range(0, Count).Select(x => (byte)x).ToArray();
-            foreach (var b in bytes)
+            byte[] bytes = Enumerable.Range(0, Count).Select(x => (byte)x).ToArray();
+            foreach (byte b in bytes)
             {
-                this.writer.Write(b, 8);
+                writer.Write(b, 8);
             }
-            Assert.That(this.writer.GetByteCount(), Is.EqualTo(Count), $"Should have written {Count} bytes");
+            Assert.That(writer.GetByteCount(), Is.EqualTo(Count), $"Should have written {Count} bytes");
 
-            var array = this.writer.ToArray();
-            for (var i = 0; i < Count; i++)
+            byte[] array = writer.ToArray();
+            for (int i = 0; i < Count; i++)
             {
                 Assert.That(array[i], Is.EqualTo(bytes[i]), "values should be equal");
             }
@@ -421,13 +416,13 @@ namespace JamesFrowen.BitPacking.Tests
         [TestCase(9, 23)]
         public void SegmentHasCorrectLength(int numberOf20Writes, int expectedSegmentSize)
         {
-            for (var i = 0; i < numberOf20Writes; i++)
+            for (int i = 0; i < numberOf20Writes; i++)
             {
-                this.writer.Write(0, 20);
+                writer.Write(0, 20);
             }
-            Assert.That(this.writer.GetByteCount(), Is.EqualTo(expectedSegmentSize), $"Should have written {expectedSegmentSize} bytes");
+            Assert.That(writer.GetByteCount(), Is.EqualTo(expectedSegmentSize), $"Should have written {expectedSegmentSize} bytes");
 
-            var segment = this.writer.ToArray();
+            byte[] segment = writer.ToArray();
             Assert.That(segment.Count, Is.EqualTo(expectedSegmentSize), $"Segment should be {expectedSegmentSize} bytes");
         }
     }
