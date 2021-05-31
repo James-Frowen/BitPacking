@@ -45,7 +45,7 @@ namespace JamesFrowen.BitPacking
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Pack(BitWriter writer, Quaternion _value)
+        public void Pack(NetworkWriter writer, Quaternion _value)
         {
             // make sure value is normalized (dont trust user given value, and math here assumes normalized)
             var x = _value.x;
@@ -170,7 +170,7 @@ namespace JamesFrowen.BitPacking
 
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Quaternion Unpack(BitReader reader)
+        public Quaternion Unpack(NetworkReader reader)
         {
             Quaternion result;
 

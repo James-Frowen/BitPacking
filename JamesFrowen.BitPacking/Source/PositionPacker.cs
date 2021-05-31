@@ -37,7 +37,7 @@ namespace JamesFrowen.BitPacking
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Pack(BitWriter writer, Vector3 value)
+        public void Pack(NetworkWriter writer, Vector3 value)
         {
             this.x.Pack(writer, value.x);
             this.y.Pack(writer, value.y);
@@ -45,7 +45,7 @@ namespace JamesFrowen.BitPacking
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Vector3 Unpack(BitReader reader)
+        public Vector3 Unpack(NetworkReader reader)
         {
             return new Vector3(
                 this.x.Unpack(reader),

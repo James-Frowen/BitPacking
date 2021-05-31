@@ -33,14 +33,14 @@ namespace JamesFrowen.BitPacking
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Pack(BitWriter writer, float value)
+        public void Pack(NetworkWriter writer, float value)
         {
             var v = Compression.ScaleToUInt(value, this.minFloat, this.maxFloat, this.minUint, this.maxUint);
             writer.Write(v, this.bitCount);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public float Unpack(BitReader reader)
+        public float Unpack(NetworkReader reader)
         {
             var v = reader.Read(this.bitCount);
             return Compression.ScaleFromUInt(v, this.minFloat, this.maxFloat, this.minUint, this.maxUint);

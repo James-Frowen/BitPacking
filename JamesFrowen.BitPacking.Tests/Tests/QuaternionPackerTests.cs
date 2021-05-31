@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace JamesFrowen.BitPacking.Tests
 {
-    public class QuaternionPackerTests : BitWriterTestBase
+    public class QuaternionPackerTests : NetworkWriterTestBase
     {
         private const int BufferSize = 1000;
 
@@ -76,15 +76,19 @@ namespace JamesFrowen.BitPacking.Tests
 
         [Test]
         [TestCaseSource(nameof(CompressesAndDecompressesCases))]
+#if !UNITY_ENGINE
+        [Ignore("Quaternion.Euler Requires unity engine to run")]
+#endif
         public void PackAndUnpack(int bits, Quaternion inValue)
         {
+
             var precision = Precision(bits);
 
             var packer = new QuaternionPacker(bits);
 
-            packer.Pack(writer, inValue);
+            packer.Pack(this.writer, inValue);
 
-            this.reader.CopyToBuffer(this.writer.ToArray());
+            this.reader.Reset(this.writer.ToArraySegment());
             var outValue = packer.Unpack(this.reader);
             //Debug.Log($"Packed: ({inValue.x:0.000},{inValue.y:0.000},{inValue.z:0.000},{inValue.w:0.000}) " +
             //          $"UnPacked: ({outValue.x:0.000},{outValue.y:0.000},{outValue.z:0.000},{outValue.w:0.000})");
@@ -137,9 +141,9 @@ namespace JamesFrowen.BitPacking.Tests
 
         private Quaternion PackUnpack(Quaternion inValue, QuaternionPacker packer)
         {
-            packer.Pack(writer, inValue);
+            packer.Pack(this.writer, inValue);
 
-            this.reader.CopyToBuffer(this.writer.ToArray());
+            this.reader.Reset(this.writer.ToArraySegment());
             return packer.Unpack(this.reader);
         }
 

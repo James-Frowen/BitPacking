@@ -28,7 +28,7 @@ using System.Runtime.InteropServices;
 using Unity.Collections.LowLevel.Unsafe;
 using UnityEngine;
 
-namespace Mirage.Serialization
+namespace JamesFrowen.BitPacking
 {
     /// <summary>
     /// Binary stream Reader. Supports simple types, buffers, arrays, structs, and nested types
@@ -51,6 +51,12 @@ namespace Mirage.Serialization
             get => this.bitLength;
         }
 
+        public int BitPosition
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => this.bitPosition;
+        }
+
         /// <summary>
         /// Position to the nearest byte
         /// </summary>
@@ -64,8 +70,11 @@ namespace Mirage.Serialization
             get => (this.bitPosition + 0b111) >> 3;
         }
 
-
-        public NetworkReader() { }
+        public NetworkReader()
+        {
+            // start disposed as there is no handle until first reset
+            this.disposed = true;
+        }
         ~NetworkReader()
         {
             this.Dispose(false);
@@ -91,10 +100,13 @@ namespace Mirage.Serialization
             this.Dispose(true);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Reset(ArraySegment<byte> segment)
         {
             this.Reset(segment.Array, segment.Offset, segment.Count);
         }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Reset(byte[] array) => this.Reset(array, 0, array.Length);
         public void Reset(byte[] array, int position, int length)
         {
             if (!this.disposed)

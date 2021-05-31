@@ -1,39 +1,39 @@
+using NUnit.Framework;
 using System;
 using System.Collections;
-using NUnit.Framework;
 using UnityEngine;
 
 namespace JamesFrowen.BitPacking.Tests
 {
-    public class PositionPackerTests : BitWriterTestBase
+    public class PositionPackerTests : NetworkWriterTestBase
     {
         private const int BufferSize = 1000;
 
         TestRandom random = new TestRandom();
 
-        static TestCaseData[] PackAndUnpackCases()
+        static IEnumerable PackAndUnpackCases
         {
-            return new TestCaseData[]
+            get
             {
-                new TestCaseData(new Vector3(0, 0, 0), new Vector3(100, 100, 100), 0.01f, new Vector3(0, 0, 0)),
-                new TestCaseData(new Vector3(0, 0, 0), new Vector3(100, 100, 100), 0.01f, new Vector3(20, 20, 20)),
-                new TestCaseData(new Vector3(0, 0, 0), new Vector3(100, 100, 100), 0.01f, new Vector3(50, 50, 50)),
-                new TestCaseData(new Vector3(0, 0, 0), new Vector3(100, 100, 100), 0.01f, new Vector3(100, 100, 100))
-            };
+                yield return new TestCaseData(new Vector3(0, 0, 0), new Vector3(100, 100, 100), 0.01f, new Vector3(0, 0, 0));
+                yield return new TestCaseData(new Vector3(0, 0, 0), new Vector3(100, 100, 100), 0.01f, new Vector3(20, 20, 20));
+                yield return new TestCaseData(new Vector3(0, 0, 0), new Vector3(100, 100, 100), 0.01f, new Vector3(50, 50, 50));
+                yield return new TestCaseData(new Vector3(0, 0, 0), new Vector3(100, 100, 100), 0.01f, new Vector3(100, 100, 100));
+            }
         }
 
         [Test]
         [TestCaseSource(nameof(PackAndUnpackCases))]
         public void PackAndUnpack(Vector3 min, Vector3 max, float precision, Vector3 inValue)
         {
-            PositionPacker packer = new PositionPacker(min, max, precision);
+            var packer = new PositionPacker(min, max, precision);
 
-            packer.Pack(writer, inValue);
+            packer.Pack(this.writer, inValue);
 
-            reader.CopyToBuffer(writer.ToArray());
-            Vector3 outValue = packer.Unpack(reader);
+            this.reader.Reset(this.writer.ToArray());
+            var outValue = packer.Unpack(this.reader);
 
-            string debugMessage = $"in{inValue} out{outValue}";
+            var debugMessage = $"in{inValue} out{outValue}";
             Assert.That(outValue.x, Is.EqualTo(inValue.x).Within(precision), debugMessage);
             Assert.That(outValue.y, Is.EqualTo(inValue.y).Within(precision), debugMessage);
             Assert.That(outValue.z, Is.EqualTo(inValue.z).Within(precision), debugMessage);
@@ -44,25 +44,25 @@ namespace JamesFrowen.BitPacking.Tests
         [TestCaseSource(nameof(PackAndUnpackCases))]
         public void PackHasCorrectLength(Vector3 min, Vector3 max, float precision, Vector3 inValue)
         {
-            PositionPacker packer = new PositionPacker(min, max, precision);
+            var packer = new PositionPacker(min, max, precision);
 
-            packer.Pack(writer, inValue);
+            packer.Pack(this.writer, inValue);
 
-            Assert.That(writer.GetBitCount(), Is.EqualTo(packer.bitCount));
+            Assert.That(this.writer.BitPosition, Is.EqualTo(packer.bitCount));
         }
 
         [Test]
         [TestCaseSource(nameof(PackAndUnpackCases))]
         public void UnpackHasCorrectLength(Vector3 min, Vector3 max, float precision, Vector3 inValue)
         {
-            PositionPacker packer = new PositionPacker(min, max, precision);
+            var packer = new PositionPacker(min, max, precision);
 
-            packer.Pack(writer, inValue);
+            packer.Pack(this.writer, inValue);
 
-            reader.CopyToBuffer(writer.ToArray());
-            Vector3 _ = packer.Unpack(reader);
+            this.reader.Reset(this.writer.ToArraySegment());
+            var _ = packer.Unpack(this.reader);
 
-            Assert.That(reader.GetBitPosition(), Is.EqualTo(packer.bitCount));
+            Assert.That(this.reader.BitPosition, Is.EqualTo(packer.bitCount));
         }
 
 
@@ -94,7 +94,7 @@ namespace JamesFrowen.BitPacking.Tests
         [TestCase(10u, 0u)]
         public void BitCountFromRangeThrowsForBadInputs(uint min, uint max)
         {
-            ArgumentException execption = Assert.Throws<ArgumentException>(() =>
+            var execption = Assert.Throws<ArgumentException>(() =>
             {
                 BitCountHelper.BitCountFromRange(min, max);
             });
