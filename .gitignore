@@ -5,6 +5,7 @@ JamesFrowen.BitPacking.Tests.meta
 JamesFrowen.BitPacking/Source.meta
 JamesFrowen.BitPacking.Tests/Tests.meta
 README.md.meta
+LICENSE.meta
 
 # Created by https://www.toptal.com/developers/gitignore/api/dotnetcore,vs
 # Edit at https://www.toptal.com/developers/gitignore?templates=dotnetcore,vs
