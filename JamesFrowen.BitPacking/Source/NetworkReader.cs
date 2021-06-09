@@ -120,9 +120,8 @@ namespace JamesFrowen.BitPacking
             // reset disposed bool, as it can be disposed again after reset
             this.disposed = false;
 
-            var byteCapacity = length;
-            this.bitLength = byteCapacity * 8;
             this.bitPosition = position * 8;
+            this.bitLength = bitPosition + (length * 8);
             this.managedBuffer = array;
             this.handle = GCHandle.Alloc(this.managedBuffer, GCHandleType.Pinned);
             this.longPtr = (ulong*)this.handle.AddrOfPinnedObject();
@@ -141,7 +140,7 @@ namespace JamesFrowen.BitPacking
         {
             if (newPosition > this.bitLength)
             {
-                throw new IndexOutOfRangeException();
+                throw new IndexOutOfRangeException($"NewPosition:{newPosition} reader length:{bitLength}");
             }
         }
 
