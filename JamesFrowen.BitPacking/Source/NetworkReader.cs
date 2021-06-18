@@ -23,10 +23,10 @@ SOFTWARE.
 */
 
 using System;
+using System.IO;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Unity.Collections.LowLevel.Unsafe;
-using UnityEngine;
 
 namespace JamesFrowen.BitPacking
 {
@@ -39,7 +39,7 @@ namespace JamesFrowen.BitPacking
         byte[] managedBuffer;
         GCHandle handle;
         ulong* longPtr;
-        bool disposed;
+        bool needsDisposing;
 
 
         int bitPosition;
@@ -49,12 +49,6 @@ namespace JamesFrowen.BitPacking
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => this.bitLength;
-        }
-
-        public int BitPosition
-        {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => this.bitPosition;
         }
 
         /// <summary>
@@ -70,11 +64,8 @@ namespace JamesFrowen.BitPacking
             get => (this.bitPosition + 0b111) >> 3;
         }
 
-        public NetworkReader()
-        {
-            // start disposed as there is no handle until first reset
-            this.disposed = true;
-        }
+        public NetworkReader() { }
+
         ~NetworkReader()
         {
             this.Dispose(false);
@@ -82,11 +73,11 @@ namespace JamesFrowen.BitPacking
         /// <param name="disposing">true if called from IDisposable</param>
         protected virtual void Dispose(bool disposing)
         {
-            if (this.disposed) return;
+            if (!this.needsDisposing) return;
 
             this.handle.Free();
             this.longPtr = null;
-            this.disposed = true;
+            this.needsDisposing = false;
 
             if (disposing)
             {
@@ -100,54 +91,65 @@ namespace JamesFrowen.BitPacking
             this.Dispose(true);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Reset(ArraySegment<byte> segment)
         {
             this.Reset(segment.Array, segment.Offset, segment.Count);
         }
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Reset(byte[] array) => this.Reset(array, 0, array.Length);
+        public void Reset(byte[] array)
+        {
+            this.Reset(array, 0, array.Length);
+        }
         public void Reset(byte[] array, int position, int length)
         {
-            if (!this.disposed)
+            if (this.needsDisposing)
             {
                 // dispose old handler first
                 this.Dispose();
-
-                Debug.LogWarning("Calling reset on reader before disposing old handler");
             }
 
             // reset disposed bool, as it can be disposed again after reset
-            this.disposed = false;
+            this.needsDisposing = true;
 
             this.bitPosition = position * 8;
-            this.bitLength = bitPosition + (length * 8);
+            this.bitLength = this.bitPosition + (length * 8);
             this.managedBuffer = array;
             this.handle = GCHandle.Alloc(this.managedBuffer, GCHandleType.Pinned);
             this.longPtr = (ulong*)this.handle.AddrOfPinnedObject();
         }
 
-
-
-
+        /// <summary>
+        /// Can read atleast 1 bit
+        /// </summary>
+        /// <returns></returns>
         public bool CanRead()
         {
             return this.bitPosition < this.bitLength;
         }
 
+        /// <summary>
+        /// Can atleast <paramref name="byteLength"/> bytes
+        /// </summary>
+        /// <param name="byteLength"></param>
+        /// <returns></returns>
+        public bool CanReadBytes(int byteLength)
+        {
+            return (this.bitPosition + (byteLength * 8)) <= this.bitLength;
+
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        void CheckNewLength(int newPosition)
+        void checkNewLength(int newPosition)
         {
             if (newPosition > this.bitLength)
             {
-                throw new IndexOutOfRangeException($"NewPosition:{newPosition} reader length:{bitLength}");
+                throw new EndOfStreamException($"NewPosition:{newPosition} reader length:{this.bitLength}");
             }
         }
 
-        private void PadToByte()
+        private void padToByte()
         {
             // todo do we need to clear skipped bits?
-            this.bitPosition += this.bitPosition & 0b111;
+            this.bitPosition = this.BytePosition << 3;
         }
 
 
@@ -156,17 +158,18 @@ namespace JamesFrowen.BitPacking
         {
             return this.ReadBooleanAsUlong() == 1UL;
         }
+
         /// <summary>
         /// Writes first bit of <paramref name="value"/> to buffer
         /// </summary>
         /// <param name="value"></param>
         public ulong ReadBooleanAsUlong()
         {
-            var newPosition = this.bitPosition + 1;
-            this.CheckNewLength(newPosition);
+            int newPosition = this.bitPosition + 1;
+            this.checkNewLength(newPosition);
 
-            var ptr = (this.longPtr + (this.bitPosition >> 6));
-            var result = ((*ptr) >> this.bitPosition) & 0b1;
+            ulong* ptr = (this.longPtr + (this.bitPosition >> 6));
+            ulong result = ((*ptr) >> this.bitPosition) & 0b1;
 
             this.bitPosition = newPosition;
             return result;
@@ -174,52 +177,54 @@ namespace JamesFrowen.BitPacking
 
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public short ReadInt16()
-        {
-            return (short)this.ReadUInt16();
-        }
+        public sbyte ReadSByte() => (sbyte)this.ReadByte();
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ushort ReadUInt16()
-        {
-            return (ushort)this.ReadUnmasked(16);
-        }
+        public byte ReadByte() => (byte)this.readUnmasked(8);
+
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public int ReadInt32()
-        {
-            return (int)this.ReadUInt32();
-        }
+        public short ReadInt16() => (short)this.ReadUInt16();
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public uint ReadUInt32()
-        {
-            return (uint)this.ReadUnmasked(32);
-        }
+        public ushort ReadUInt16() => (ushort)this.readUnmasked(16);
+
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public long ReadInt64()
-        {
-            return (long)this.ReadUInt64();
-        }
+        public int ReadInt32() => (int)this.ReadUInt32();
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public uint ReadUInt32() => (uint)this.readUnmasked(32);
+
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public long ReadInt64() => (long)this.ReadUInt64();
         public ulong ReadUInt64()
         {
-            var newPosition = this.bitPosition + 64;
-            this.CheckNewLength(newPosition);
+            int newPosition = this.bitPosition + 64;
+            this.checkNewLength(newPosition);
 
-            var bitsInLong = this.bitPosition & 0b11_1111;
-            var bitsLeft = 64 - bitsInLong;
+            int bitsInLong = this.bitPosition & 0b11_1111;
+            ulong result;
+            if (bitsInLong == 0)
+            {
+                ulong* ptr1 = (this.longPtr + (this.bitPosition >> 6));
+                result = *ptr1;
+            }
+            else
+            {
+                int bitsLeft = 64 - bitsInLong;
 
-            var ptr1 = (this.longPtr + (this.bitPosition >> 6));
-            var ptr2 = (ptr1 + 1);
+                ulong* ptr1 = (this.longPtr + (this.bitPosition >> 6));
+                ulong* ptr2 = (ptr1 + 1);
 
-            // eg use byte, read 6  =>bitPosition=5, bitsLeft=3, newPos=1
-            // r1 = aaab_bbbb => 0000_0aaa
-            // r2 = cccc_caaa => ccaa_a000
-            // r = r1|r2 => ccaa_aaaa
-            // we mask this result later
+                // eg use byte, read 6  =>bitPosition=5, bitsLeft=3, newPos=1
+                // r1 = aaab_bbbb => 0000_0aaa
+                // r2 = cccc_caaa => ccaa_a000
+                // r = r1|r2 => ccaa_aaaa
+                // we mask this result later
 
-            var r1 = (*ptr1) >> this.bitPosition;
-            var r2 = (*ptr2) << bitsLeft;
-            var result = r1 | r2;
+                ulong r1 = (*ptr1) >> this.bitPosition;
+                ulong r2 = (*ptr2) << bitsLeft;
+                result = r1 | r2;
+            }
 
             this.bitPosition = newPosition;
 
@@ -231,13 +236,13 @@ namespace JamesFrowen.BitPacking
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public float ReadSingle()
         {
-            var uValue = this.ReadUInt32();
+            uint uValue = this.ReadUInt32();
             return *(float*)&uValue;
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public double ReadDouble()
         {
-            var uValue = this.ReadUInt64();
+            ulong uValue = this.ReadUInt64();
             return *(double*)&uValue;
         }
 
@@ -246,27 +251,27 @@ namespace JamesFrowen.BitPacking
         public ulong Read(int bits)
         {
             // mask so we dont returns extra bits
-            return this.ReadUnmasked(bits) & (ulong.MaxValue >> (64 - bits));
+            return this.readUnmasked(bits) & (ulong.MaxValue >> (64 - bits));
         }
 
-        private ulong ReadUnmasked(int bits)
+        private ulong readUnmasked(int bits)
         {
-            var newPosition = this.bitPosition + bits;
-            this.CheckNewLength(newPosition);
+            int newPosition = this.bitPosition + bits;
+            this.checkNewLength(newPosition);
 
-            var bitsInLong = this.bitPosition & 0b11_1111;
-            var bitsLeft = 64 - bitsInLong;
+            int bitsInLong = this.bitPosition & 0b11_1111;
+            int bitsLeft = 64 - bitsInLong;
 
             ulong result;
             if (bitsLeft >= bits)
             {
-                var ptr = (this.longPtr + (this.bitPosition >> 6));
+                ulong* ptr = this.longPtr + (this.bitPosition >> 6);
                 result = (*ptr) >> this.bitPosition;
             }
             else
             {
-                var ptr1 = (this.longPtr + (this.bitPosition >> 6));
-                var ptr2 = (ptr1 + 1);
+                ulong* ptr1 = this.longPtr + (this.bitPosition >> 6);
+                ulong* ptr2 = ptr1 + 1;
 
                 // eg use byte, read 6  =>bitPosition=5, bitsLeft=3, newPos=1
                 // r1 = aaab_bbbb => 0000_0aaa
@@ -274,8 +279,8 @@ namespace JamesFrowen.BitPacking
                 // r = r1|r2 => ccaa_aaaa
                 // we mask this result later
 
-                var r1 = (*ptr1) >> this.bitPosition;
-                var r2 = (*ptr2) << bitsLeft;
+                ulong r1 = (*ptr1) >> this.bitPosition;
+                ulong r2 = (*ptr2) << bitsLeft;
                 result = r1 | r2;
             }
             this.bitPosition = newPosition;
@@ -301,11 +306,11 @@ namespace JamesFrowen.BitPacking
         /// <param name="byteSize"></param>
         public void PadAndCopy<T>(int byteSize, out T value) where T : struct
         {
-            this.PadToByte();
-            var newPosition = this.bitPosition + 64 * byteSize;
-            this.CheckNewLength(newPosition);
+            this.padToByte();
+            int newPosition = this.bitPosition + (64 * byteSize);
+            this.checkNewLength(newPosition);
 
-            var startPtr = ((byte*)this.longPtr) + (this.bitPosition >> 3);
+            byte* startPtr = ((byte*)this.longPtr) + (this.bitPosition >> 3);
 
             UnsafeUtility.CopyPtrToStructure(startPtr, out value);
             this.bitPosition = newPosition;
@@ -321,13 +326,24 @@ namespace JamesFrowen.BitPacking
         /// <param name="length"></param>
         public void ReadBytes(byte[] array, int offset, int length)
         {
-            this.PadToByte();
-            var newPosition = this.bitPosition + 8 * length;
-            this.CheckNewLength(newPosition);
+            this.padToByte();
+            int newPosition = this.bitPosition + (8 * length);
+            this.checkNewLength(newPosition);
 
             // todo benchmark this vs Marshal.Copy or for loop
-            Buffer.BlockCopy(array, offset, this.managedBuffer, this.BytePosition, length);
+            Buffer.BlockCopy(this.managedBuffer, this.BytePosition, array, offset, length);
             this.bitPosition = newPosition;
+        }
+
+        public ArraySegment<byte> ReadBytesSegment(int count)
+        {
+            this.padToByte();
+            int newPosition = this.bitPosition + (8 * count);
+            this.checkNewLength(newPosition);
+
+            var result = new ArraySegment<byte>(this.managedBuffer, this.BytePosition, count);
+            this.bitPosition = newPosition;
+            return result;
         }
     }
 }
