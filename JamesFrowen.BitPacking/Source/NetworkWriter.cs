@@ -30,6 +30,26 @@ using UnityEngine;
 
 namespace JamesFrowen.BitPacking
 {
+    public static class BitMask
+    {
+        /// <summary>
+        /// Creates mask for <paramref name="bits"/>
+        /// <para>
+        /// (showing 32 bits for simplify, result is 64 bit)
+        /// <br/>
+        /// Example bits = 4 => mask = 00000000_00000000_00000000_00001111
+        /// <br/>
+        /// Example bits = 10 => mask = 00000000_00000000_00000011_11111111
+        /// </para>
+        /// </summary>
+        /// <param name="bits"></param>
+        /// <returns></returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static ulong Mask(int bits)
+        {
+            return bits == 0 ? 0 : ulong.MaxValue >> (64 - bits);
+        }
+    }
     /// <summary>
     /// Binary stream Writer. Supports simple types, buffers, arrays, structs, and nested types
     /// <para>Use <see cref="NetworkWriterPool.GetWriter">NetworkWriter.GetWriter</see> to reduce memory allocation</para>
@@ -207,8 +227,9 @@ namespace JamesFrowen.BitPacking
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Write(ulong value, int bits)
         {
+            if (bits == 0) return;
             // mask so we dont overwrite
-            this.writerUnmasked(value & (ulong.MaxValue >> (64 - bits)), bits);
+            this.writerUnmasked(value & BitMask.Mask(bits), bits);
         }
         private void writerUnmasked(ulong value, int bits)
         {
@@ -291,21 +312,12 @@ namespace JamesFrowen.BitPacking
             this.checkNewLength(newBit);
 
             ulong* startPtr = this.longPtr + (this.bitPosition >> 6);
-
-            int bitsInLong = this.bitPosition & 0b11_1111;
-            int bitsLeft = 64 - bitsInLong;
-
-            // write first part to end of current ulong
-            *startPtr = (*startPtr & (ulong.MaxValue >> bitsLeft)) | (*valuePtr << bitsInLong);
-
-            // write middle parts to single ulong
-            for (int i = 1; i < count; i++)
+            for (int i = 0; i < count; i++)
             {
-                *(startPtr + i) = (*(valuePtr + i - 1) >> (64 - bitsInLong)) | (*(valuePtr + i) << bitsInLong);
+                this.WriteUInt64(startPtr[i]);
             }
 
-            // write end part to start of next ulong
-            *(startPtr + count) = (*(startPtr + count) & (ulong.MaxValue << this.bitPosition)) | (*(valuePtr + count - 1) >> bitsLeft);
+            Debug.Assert(this.bitPosition == newBit, "bitPosition Shoudl already be equal to newBit because it would have incremented each WriteUInt64");
 
             this.bitPosition = newBit;
         }
@@ -333,7 +345,7 @@ namespace JamesFrowen.BitPacking
 
         /// <summary>
         /// <para>
-        ///    Moves poition to nearest byte then writes bytes to that position
+        ///    Moves position to nearest byte then writes bytes to that position
         /// </para>
         /// </summary>
         /// <param name="array"></param>
@@ -350,52 +362,46 @@ namespace JamesFrowen.BitPacking
             this.bitPosition = newPosition;
         }
 
-
         public void CopyFromWriter(NetworkWriter other, int otherBitPosition, int bitLength)
         {
             int newBit = this.bitPosition + bitLength;
             this.checkNewLength(newBit);
 
-            // we copy in 3 steps,
-            // first them bits from other, so that other is aligned with ulong
-            // then we copy middle as ulong to this
-            // then we write last ulong from other
+            int ulongPos = otherBitPosition >> 6;
+            ulong* otherPtr = other.longPtr + ulongPos;
 
-            /* write first */
-            int written = this.writeFirstFromWriter(other, otherBitPosition, bitLength);
 
-            // written all bits
-            if (written == bitLength) { return; }
+            int firstBitOffset = otherBitPosition & 0b11_1111;
 
-            /* write middle */
-            bitLength -= written;
-            otherBitPosition += written;
-            int otherLongPosition = otherBitPosition >> 6;
-            // other should now be aligned to ulong;
+            // first align other
+            if (firstBitOffset != 0)
+            {
+                int bitsToCopyFromFirst = Math.Min(64 - firstBitOffset, bitLength);
 
-            int ulongCount = bitLength >> 6;
-            this.UnsafeCopy(other.longPtr + otherLongPosition, ulongCount);
+                // if offset is 10, then we want to shift value by 10 to remove un-needed bits
+                ulong firstValue = *otherPtr >> firstBitOffset;
 
-            /* write last */
-            int leftOver = bitLength - (ulongCount * 64);
-            ulong last = other.longPtr[otherLongPosition + ulongCount];
-            this.Write(last, leftOver);
+                this.Write(firstValue, bitsToCopyFromFirst);
 
+                bitLength -= bitsToCopyFromFirst;
+                otherPtr++;
+            }
+
+            // write aligned with other
+            while (bitLength > 64)
+            {
+                this.WriteUInt64(*otherPtr);
+
+                bitLength -= 64;
+                otherPtr++;
+            }
+
+            // write left over others
+            //      if bitlength == 0 then write will return
+            this.Write(*otherPtr, bitLength);
+
+            Debug.Assert(this.bitPosition == newBit, "bitPosition Shoudl already be equal to newBit because it would have incremented each WriteUInt64");
             this.bitPosition = newBit;
-        }
-
-        private int writeFirstFromWriter(NetworkWriter other, int otherBitPosition, int bitLength)
-        {
-            // how many bits to copy from the first ulong in other
-            int otherOffset = otherBitPosition & 0b11_1111;
-            int bitsToCopy = Math.Min(64 - otherOffset, bitLength);
-
-            // start ulong
-            int otherLongPosition = otherBitPosition >> 6;
-            ulong first = other.longPtr[otherLongPosition];
-
-            this.Write(first >> otherOffset, bitsToCopy);
-            return bitsToCopy;
         }
     }
 }

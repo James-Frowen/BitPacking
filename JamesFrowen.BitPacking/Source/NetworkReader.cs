@@ -51,6 +51,12 @@ namespace JamesFrowen.BitPacking
             get => this.bitLength;
         }
 
+        public int BitPosition
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => this.bitPosition;
+        }
+
         /// <summary>
         /// Position to the nearest byte
         /// </summary>
@@ -250,6 +256,7 @@ namespace JamesFrowen.BitPacking
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ulong Read(int bits)
         {
+            if (bits == 0) return 0;
             // mask so we dont returns extra bits
             return this.readUnmasked(bits) & (ulong.MaxValue >> (64 - bits));
         }
@@ -266,7 +273,7 @@ namespace JamesFrowen.BitPacking
             if (bitsLeft >= bits)
             {
                 ulong* ptr = this.longPtr + (this.bitPosition >> 6);
-                result = (*ptr) >> this.bitPosition;
+                result = (*ptr) >> bitsInLong;
             }
             else
             {
@@ -279,7 +286,7 @@ namespace JamesFrowen.BitPacking
                 // r = r1|r2 => ccaa_aaaa
                 // we mask this result later
 
-                ulong r1 = (*ptr1) >> this.bitPosition;
+                ulong r1 = (*ptr1) >> bitsInLong;
                 ulong r2 = (*ptr2) << bitsLeft;
                 result = r1 | r2;
             }

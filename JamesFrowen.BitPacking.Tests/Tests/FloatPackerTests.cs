@@ -4,6 +4,19 @@ using UnityEngine;
 
 namespace JamesFrowen.BitPacking.Tests
 {
+    public abstract class NetworkWriterTestBase
+    {
+        private const int BufferSize = 1300;
+        protected readonly NetworkWriter writer = new NetworkWriter(BufferSize);
+        protected readonly NetworkReader reader = new NetworkReader();
+
+        [TearDown]
+        public void TearDown()
+        {
+            this.writer.Reset();
+            this.reader.Dispose();
+        }
+    }
     public class FloatPackerTests : NetworkWriterTestBase
     {
         private const int BufferSize = 1000;
@@ -24,7 +37,7 @@ namespace JamesFrowen.BitPacking.Tests
             packer.Pack(this.writer, inValue);
 
             this.reader.Reset(this.writer.ToArraySegment());
-            var outValue = packer.Unpack(this.reader);
+            float outValue = packer.Unpack(this.reader);
 
 
             Assert.That(outValue, Is.Not.NaN, "x was NaN");
