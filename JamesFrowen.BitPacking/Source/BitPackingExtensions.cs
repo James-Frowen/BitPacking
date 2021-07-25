@@ -22,7 +22,7 @@ namespace JamesFrowen.BitPacking
         public static void WriteFloatSigned(this NetworkWriter writer, float value, float signedMaxFloat, uint maxUint, int bitCount)
         {
             // 1 bit for sign
-            var bitValueCount = bitCount - 1;
+            int bitValueCount = bitCount - 1;
 
             if (value < 0)
             {
@@ -34,7 +34,7 @@ namespace JamesFrowen.BitPacking
                 writer.WriteBoolean(false);
             }
 
-            var uValue = Compression.ScaleToUInt(value, 0, signedMaxFloat, 0, maxUint);
+            ulong uValue = Compression.ScaleToUInt(value, 0, signedMaxFloat, 0, maxUint);
             writer.Write(uValue, bitValueCount);
         }
 
@@ -42,12 +42,12 @@ namespace JamesFrowen.BitPacking
         public static float ReadFloatSigned(this NetworkReader reader, float maxFloat, uint maxUint, int bitCount)
         {
             // 1 bit for sign
-            var bitValueCount = bitCount - 1;
+            int bitValueCount = bitCount - 1;
 
-            var signBit = reader.ReadBoolean();
-            var valueBits = reader.Read(bitValueCount);
+            bool signBit = reader.ReadBoolean();
+            ulong valueBits = reader.Read(bitValueCount);
 
-            var fValue = Compression.ScaleFromUInt(valueBits, 0, maxFloat, 0, maxUint);
+            float fValue = Compression.ScaleFromUInt(valueBits, 0, maxFloat, 0, maxUint);
 
             return signBit ? -fValue : fValue;
         }

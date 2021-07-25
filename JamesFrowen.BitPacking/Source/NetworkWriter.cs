@@ -30,81 +30,111 @@ using UnityEngine;
 
 namespace JamesFrowen.BitPacking
 {
-    public static class BitMask
-    {
-        /// <summary>
-        /// Creates mask for <paramref name="bits"/>
-        /// <para>
-        /// (showing 32 bits for simplify, result is 64 bit)
-        /// <br/>
-        /// Example bits = 4 => mask = 00000000_00000000_00000000_00001111
-        /// <br/>
-        /// Example bits = 10 => mask = 00000000_00000000_00000011_11111111
-        /// </para>
-        /// </summary>
-        /// <param name="bits"></param>
-        /// <returns></returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static ulong Mask(int bits)
-        {
-            return bits == 0 ? 0 : ulong.MaxValue >> (64 - bits);
-        }
-    }
     /// <summary>
-    /// Binary stream Writer. Supports simple types, buffers, arrays, structs, and nested types
-    /// <para>Use <see cref="NetworkWriterPool.GetWriter">NetworkWriter.GetWriter</see> to reduce memory allocation</para>
+    /// Bit writer, writes values to a buffer on a bit level
+    /// <para>Use <see cref="NetworkWriterPool.GetWriter"/> to reduce memory allocation</para>
     /// </summary>
     public unsafe class NetworkWriter
     {
         byte[] managedBuffer;
+        int bitCapacity;
+        /// <summary>Allow internal buffer to resize if capcity is reached</summary>
+        readonly bool allowResize;
+
         GCHandle handle;
         ulong* longPtr;
-        int bitCapacity;
-        bool disposed;
+        bool needsDisposing;
 
         int bitPosition;
 
+        /// <summary>
+        /// Size limit of buffer
+        /// </summary>
+        public int ByteCapacity
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            // see ByteLength for comment on math
+            get => (this.bitCapacity + 0b111) >> 3;
+        }
 
+        /// <summary>
+        /// Current <see cref="BitPosition"/> rounded up to nearest multiple of 8
+        /// <para>To set byte position use <see cref="MoveBitPosition"/> multiple by 8</para>
+        /// </summary>
         public int ByteLength
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             // rounds up to nearest 8
             // add to 3 last bits,
             //   if any are 1 then it will roll over 4th bit.
             //   if all are 0, then nothing happens 
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => (this.bitPosition + 0b111) >> 3;
         }
 
+        /// <summary>
+        /// Current bit position for writing to buffer
+        /// <para>To set bit position use <see cref="MoveBitPosition"/></para>
+        /// </summary>
         public int BitPosition
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => this.bitPosition;
         }
 
-        public NetworkWriter(int minByteCapacity)
+        public NetworkWriter(int minByteCapacity) : this(minByteCapacity, true) { }
+        public NetworkWriter(int minByteCapacity, bool allowResize)
         {
+            this.allowResize = allowResize;
+
+            // ensure capacity is multiple of 8
             int ulongCapacity = Mathf.CeilToInt(minByteCapacity / (float)sizeof(ulong));
             int byteCapacity = ulongCapacity * sizeof(ulong);
+
             this.bitCapacity = byteCapacity * 8;
             this.managedBuffer = new byte[byteCapacity];
-            this.handle = GCHandle.Alloc(this.managedBuffer, GCHandleType.Pinned);
-            this.longPtr = (ulong*)this.handle.AddrOfPinnedObject();
+
+            this.CreateHandle();
         }
+
+
         ~NetworkWriter()
         {
-            this.freeHandle();
+            this.FreeHandle();
+        }
+
+
+        void ResizeBuffer()
+        {
+            int size = this.managedBuffer.Length * 2;
+
+            Debug.Log(this.handle.AddrOfPinnedObject());
+            this.FreeHandle();
+
+            Array.Resize(ref this.managedBuffer, size);
+            this.bitCapacity = size * 8;
+
+            this.CreateHandle();
+            Debug.Log(this.handle.AddrOfPinnedObject());
+        }
+        void CreateHandle()
+        {
+            if (this.needsDisposing) this.FreeHandle();
+
+            this.handle = GCHandle.Alloc(this.managedBuffer, GCHandleType.Pinned);
+            this.longPtr = (ulong*)this.handle.AddrOfPinnedObject();
+            this.needsDisposing = true;
         }
         /// <summary>
         /// Frees the handle for the buffer
-        /// <para>In order for <see cref="PooledNetworkWriter"/> to work This class can not have <see cref="IDisposable"/>. Instead we call this method from Finalze</para>
+        /// <para>In order for <see cref="PooledNetworkWriter"/> to work This class can not have <see cref="IDisposable"/>. Instead we call this method from finalize</para>
         /// </summary>
-        void freeHandle()
+        void FreeHandle()
         {
-            if (this.disposed) return;
+            if (!this.needsDisposing) return;
 
             this.handle.Free();
             this.longPtr = null;
-            this.disposed = true;
+            this.needsDisposing = false;
         }
 
         public void Reset()
@@ -114,32 +144,38 @@ namespace JamesFrowen.BitPacking
 
         /// <summary>
         /// Copies internal buffer to new Array
+        /// <para>To reduce Allocations use <see cref="ToArraySegment"/> instead</para>
         /// </summary>
         /// <returns></returns>
         public byte[] ToArray()
         {
             byte[] data = new byte[this.ByteLength];
-            // todo benchmark and optimize (can we copy from ptr faster
             Buffer.BlockCopy(this.managedBuffer, 0, data, 0, this.ByteLength);
             return data;
         }
         public ArraySegment<byte> ToArraySegment()
         {
-            // todo clear extra bits in byte (dont want last byte to have useless data)
             return new ArraySegment<byte>(this.managedBuffer, 0, this.ByteLength);
         }
 
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        void checkNewLength(int newLength)
+        void CheckCapacity(int newLength)
         {
             if (newLength > this.bitCapacity)
             {
-                throw new IndexOutOfRangeException();
+                if (this.allowResize)
+                {
+                    this.ResizeBuffer();
+                }
+                else
+                {
+                    throw new InvalidOperationException($"Can not write over end of buffer, new length {newLength}, capacity {this.bitCapacity}");
+                }
             }
         }
 
-        private void padToByte()
+        private void PadToByte()
         {
             this.bitPosition = this.ByteLength << 3;
         }
@@ -156,7 +192,7 @@ namespace JamesFrowen.BitPacking
         public void WriteBoolean(ulong value)
         {
             int newPosition = this.bitPosition + 1;
-            this.checkNewLength(newPosition);
+            this.CheckCapacity(newPosition);
 
             int bitsInLong = this.bitPosition & 0b11_1111;
 
@@ -176,19 +212,19 @@ namespace JamesFrowen.BitPacking
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteSByte(sbyte value) => this.WriteByte((byte)value);
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void WriteByte(byte value) => this.writerUnmasked(value, 8);
+        public void WriteByte(byte value) => this.WriterUnmasked(value, 8);
 
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteInt16(short value) => this.WriteUInt16((ushort)value);
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void WriteUInt16(ushort value) => this.writerUnmasked(value, 16);
+        public void WriteUInt16(ushort value) => this.WriterUnmasked(value, 16);
 
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteInt32(int value) => this.WriteUInt32((uint)value);
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void WriteUInt32(uint value) => this.writerUnmasked(value, 32);
+        public void WriteUInt32(uint value) => this.WriterUnmasked(value, 32);
 
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -196,7 +232,7 @@ namespace JamesFrowen.BitPacking
         public void WriteUInt64(ulong value)
         {
             int newPosition = this.bitPosition + 64;
-            this.checkNewLength(newPosition);
+            this.CheckCapacity(newPosition);
 
             int bitsInLong = this.bitPosition & 0b11_1111;
 
@@ -214,7 +250,6 @@ namespace JamesFrowen.BitPacking
 
                 *ptr1 = (*ptr1 & (ulong.MaxValue >> bitsLeft)) | (value << bitsInLong);
                 *ptr2 = (*ptr2 & (ulong.MaxValue << newPosition)) | (value >> bitsLeft);
-
             }
             this.bitPosition = newPosition;
         }
@@ -229,12 +264,13 @@ namespace JamesFrowen.BitPacking
         {
             if (bits == 0) return;
             // mask so we dont overwrite
-            this.writerUnmasked(value & BitMask.Mask(bits), bits);
+            this.WriterUnmasked(value & BitMask.Mask(bits), bits);
         }
-        private void writerUnmasked(ulong value, int bits)
+
+        private void WriterUnmasked(ulong value, int bits)
         {
             int newPosition = this.bitPosition + bits;
-            this.checkNewLength(newPosition);
+            this.CheckCapacity(newPosition);
 
             int bitsInLong = this.bitPosition & 0b11_1111;
             int bitsLeft = 64 - bitsInLong;
@@ -243,15 +279,7 @@ namespace JamesFrowen.BitPacking
             {
                 ulong* ptr = this.longPtr + (this.bitPosition >> 6);
 
-                // todo benchmark and optimize this new mask
-                ulong mask1 = bitsInLong == 0 ? 0ul : (ulong.MaxValue >> bitsLeft);
-                ulong mask2 = (newPosition & 0b11_1111) == 0 ? 0ul : (ulong.MaxValue << newPosition /*we can use full position here as c# will mask it to just 6 bits*/);
-                ulong mask = mask1 | mask2;
-
-                // old mask, doesn't work when bitposition before/after is multiple of 64
-                //ulong mask = (ulong.MaxValue >> bitsLeft) | (ulong.MaxValue << newPosition /*we can use full position here as c# will mask it to just 6 bits*/);
-
-                *ptr = (*ptr & mask) | (value << bitsInLong);
+                *ptr = (*ptr & BitMask.OuterMask(this.bitPosition, newPosition)) | (value << bitsInLong);
             }
             else
             {
@@ -264,78 +292,66 @@ namespace JamesFrowen.BitPacking
             this.bitPosition = newPosition;
         }
 
+        /// <summary>
+        /// Same as <see cref="WriteAtPosition"/> expect position given is in bytes instead of bits
+        /// <para>WARNING: When writing to bytes instead of bits make sure you are able to read at the right position when deserializing as it might cause data to be misaligned</para>
+        /// </summary>
+        /// <param name="value"></param>
+        /// <param name="bits"></param>
+        /// <param name="bytePosition"></param>
         public void WriteAtBytePosition(ulong value, int bits, int bytePosition)
         {
             this.WriteAtPosition(value, bits, bytePosition * 8);
         }
-        public void WriteAtPosition(ulong value, int bits, int bitPosition)
-        {
-            // careful with this method, dont set bitPosition
-
-            int newPosition = bitPosition + bits;
-            this.checkNewLength(newPosition);
-
-            // mask so we dont overwrite
-            value &= ulong.MaxValue >> (64 - bits);
-
-            int bitsInLong = bitPosition & 0b11_1111;
-            int bitsLeft = 64 - bitsInLong;
-            if (bitsLeft >= bits)
-            {
-                ulong* ptr = this.longPtr + (bitPosition >> 6);
-                *ptr = (
-                    *ptr & (
-                        (ulong.MaxValue >> bitsLeft) | (ulong.MaxValue << (newPosition /*we can use full position here as c# will mask it to just 6 bits*/))
-                    )
-                ) | (value << bitsInLong);
-            }
-            else
-            {
-                ulong* ptr1 = this.longPtr + (bitPosition >> 6);
-                ulong* ptr2 = ptr1 + 1;
-
-                *ptr1 = (*ptr1 & (ulong.MaxValue >> bitsLeft)) | (value << bitsInLong);
-                *ptr2 = (*ptr2 & (ulong.MaxValue << newPosition)) | (value >> bitsLeft);
-            }
-        }
 
         /// <summary>
-        /// 
+        /// Writes n <paramref name="bits"/> from <paramref name="value"/> to <paramref name="bitPosition"/>
+        /// <para>This methods can be used to go back to a previous position to write length or other flags to the buffer after other data has been written</para>
+        /// <para>WARNING: This method does not change the internal position so will not change the overall length if writing past internal position</para>
         /// </summary>
-        /// <param name="valuePtr"></param>
-        /// <param name="count">How many ulongs to copy, eg 64 bits</param>
-        public void UnsafeCopy(ulong* valuePtr, int count)
+        /// <param name="value">value to write</param>
+        /// <param name="bits">number of bits in value to write</param>
+        /// <param name="bitPosition">where to write bits</param>
+        public void WriteAtPosition(ulong value, int bits, int bitPosition)
         {
-            if (count == 0) { return; }
+            // check length here so this methods throws instead of the write below
+            // this is so that it is more obvious that the position arg for this method is invalid
+            this.CheckCapacity(bitPosition + bits);
 
-            int newBit = this.bitPosition + (64 * count);
-            this.checkNewLength(newBit);
+            // moves position to arg, then write, then reset position
+            int currentPosition = this.bitPosition;
+            this.bitPosition = bitPosition;
+            this.Write(value, bits);
+            this.bitPosition = currentPosition;
+        }
 
-            ulong* startPtr = this.longPtr + (this.bitPosition >> 6);
-            for (int i = 0; i < count; i++)
-            {
-                this.WriteUInt64(startPtr[i]);
-            }
 
-            Debug.Assert(this.bitPosition == newBit, "bitPosition Shoudl already be equal to newBit because it would have incremented each WriteUInt64");
-
-            this.bitPosition = newBit;
+        /// <summary>
+        /// Moves the internal bit position
+        /// <para>For most usecases it is safer to use <see cref="WriteAtPosition"/></para>
+        /// <para>WARNING: When writing to earlier position make sure to move position back to end of buffer after writing because position is also used as length</para>
+        /// </summary>
+        /// <param name="newPosition"></param>
+        public void MoveBitPosition(int newPosition)
+        {
+            this.CheckCapacity(newPosition);
+            this.bitPosition = newPosition;
         }
 
         /// <summary>
         /// <para>
-        ///    Moves poition to nearest byte then copies struct to that position
+        ///    Moves position to nearest byte then copies struct to that position
         /// </para>
         /// See <see href="https://docs.unity3d.com/ScriptReference/Unity.Collections.LowLevel.Unsafe.UnsafeUtility.CopyStructureToPtr.html">UnsafeUtility.CopyStructureToPtr</see>
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="value"></param>
-        /// <param name="byteSize">size of stuct, in bytes</param>
+        /// <param name="byteSize">size of struct, in bytes</param>
         public void PadAndCopy<T>(ref T value, int byteSize) where T : struct
         {
-            this.padToByte();
+            this.PadToByte();
             int newPosition = this.bitPosition + (8 * byteSize);
-            this.checkNewLength(newPosition);
+            this.CheckCapacity(newPosition);
 
             byte* startPtr = ((byte*)this.longPtr) + (this.bitPosition >> 3);
 
@@ -353,9 +369,9 @@ namespace JamesFrowen.BitPacking
         /// <param name="length"></param>
         public void WriteBytes(byte[] array, int offset, int length)
         {
-            this.padToByte();
+            this.PadToByte();
             int newPosition = this.bitPosition + (8 * length);
-            this.checkNewLength(newPosition);
+            this.CheckCapacity(newPosition);
 
             // todo benchmark this vs Marshal.Copy or for loop
             Buffer.BlockCopy(array, offset, this.managedBuffer, this.ByteLength, length);
@@ -365,7 +381,7 @@ namespace JamesFrowen.BitPacking
         public void CopyFromWriter(NetworkWriter other, int otherBitPosition, int bitLength)
         {
             int newBit = this.bitPosition + bitLength;
-            this.checkNewLength(newBit);
+            this.CheckCapacity(newBit);
 
             int ulongPos = otherBitPosition >> 6;
             ulong* otherPtr = other.longPtr + ulongPos;
@@ -400,7 +416,7 @@ namespace JamesFrowen.BitPacking
             //      if bitlength == 0 then write will return
             this.Write(*otherPtr, bitLength);
 
-            Debug.Assert(this.bitPosition == newBit, "bitPosition Shoudl already be equal to newBit because it would have incremented each WriteUInt64");
+            Debug.Assert(this.bitPosition == newBit, "bitPosition should already be equal to newBit because it would have incremented each WriteUInt64");
             this.bitPosition = newBit;
         }
     }

@@ -20,8 +20,8 @@ namespace JamesFrowen.BitPacking
             this.minFloat = min;
             this.maxFloat = max;
 
-            var range = max - min;
-            var rangeUint = (uint)(range / precision);
+            float range = max - min;
+            uint rangeUint = (uint)(range / precision);
 
             this.bitCount = BitCountHelper.BitCountFromRange(rangeUint);
 
@@ -35,14 +35,14 @@ namespace JamesFrowen.BitPacking
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Pack(NetworkWriter writer, float value)
         {
-            var v = Compression.ScaleToUInt(value, this.minFloat, this.maxFloat, this.minUint, this.maxUint);
+            ulong v = Compression.ScaleToUInt(value, this.minFloat, this.maxFloat, this.minUint, this.maxUint);
             writer.Write(v, this.bitCount);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public float Unpack(NetworkReader reader)
         {
-            var v = reader.Read(this.bitCount);
+            ulong v = reader.Read(this.bitCount);
             return Compression.ScaleFromUInt(v, this.minFloat, this.maxFloat, this.minUint, this.maxUint);
         }
 

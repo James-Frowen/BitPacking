@@ -54,7 +54,7 @@ namespace JamesFrowen.BitPacking
 
         public ulong Unpack(NetworkReader reader)
         {
-            var a = reader.Read(1);
+            ulong a = reader.Read(1);
             if (a == 0)
             {
                 return reader.Read(this.smallBitCount);
@@ -67,7 +67,7 @@ namespace JamesFrowen.BitPacking
 
         public void PackNullable(NetworkWriter writer, uint? value)
         {
-            var hasValue = value.HasValue;
+            bool hasValue = value.HasValue;
             writer.WriteBoolean(hasValue);
             if (hasValue)
             {
@@ -77,7 +77,7 @@ namespace JamesFrowen.BitPacking
 
         public ulong? UnpackNullable(NetworkReader reader)
         {
-            var hasValue = reader.ReadBoolean();
+            bool hasValue = reader.ReadBoolean();
             if (hasValue)
             {
                 return this.Unpack(reader);
@@ -151,14 +151,14 @@ namespace JamesFrowen.BitPacking
 
         public ulong Unpack(NetworkReader reader)
         {
-            var a = reader.Read(1);
+            ulong a = reader.Read(1);
             if (a == 0)
             {
                 return reader.Read(this.smallBitCount);
             }
             else
             {
-                var b = reader.Read(1);
+                ulong b = reader.Read(1);
                 if (b == 0)
                 {
                     return reader.Read(this.mediumBitCount);
@@ -172,7 +172,7 @@ namespace JamesFrowen.BitPacking
 
         public void PackNullable(NetworkWriter writer, uint? value)
         {
-            var hasValue = value.HasValue;
+            bool hasValue = value.HasValue;
             writer.WriteBoolean(hasValue);
             if (hasValue)
             {
@@ -182,7 +182,7 @@ namespace JamesFrowen.BitPacking
 
         public ulong? UnpackNullable(NetworkReader reader)
         {
-            var hasValue = reader.ReadBoolean();
+            bool hasValue = reader.ReadBoolean();
             if (hasValue)
             {
                 return this.Unpack(reader);

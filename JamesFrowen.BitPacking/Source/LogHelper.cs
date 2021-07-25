@@ -9,10 +9,10 @@ namespace JamesFrowen.BitPacking
         public static void LogBits(uint n)
         {
             var builder = new System.Text.StringBuilder();
-            for (var i = sizeof(uint) * 8 - 1; i >= 0; i--)
+            for (int i = sizeof(uint) * 8 - 1; i >= 0; i--)
             {
-                var shift = n >> i;
-                var masked = shift & 0b1;
+                uint shift = n >> i;
+                uint masked = shift & 0b1;
                 builder.Append(masked);
             }
 
@@ -22,10 +22,10 @@ namespace JamesFrowen.BitPacking
         public static void LogBits(ulong n)
         {
             var builder = new System.Text.StringBuilder();
-            for (var i = sizeof(ulong) * 8 - 1; i >= 0; i--)
+            for (int i = sizeof(ulong) * 8 - 1; i >= 0; i--)
             {
-                var shift = n >> i;
-                var masked = shift & 0b1;
+                ulong shift = n >> i;
+                ulong masked = shift & 0b1;
                 builder.Append(masked);
             }
 

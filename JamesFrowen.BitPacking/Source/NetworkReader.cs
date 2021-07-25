@@ -31,8 +31,8 @@ using Unity.Collections.LowLevel.Unsafe;
 namespace JamesFrowen.BitPacking
 {
     /// <summary>
-    /// Binary stream Reader. Supports simple types, buffers, arrays, structs, and nested types
-    /// <para>Use <see cref="NetworkReaderPool.GetReader">NetworkReaderPool.GetReader</see> to reduce memory allocation</para>
+    /// Bit writer, writes values to a buffer on a bit level
+    /// <para>Use <see cref="NetworkReaderPool.GetReader"/> to reduce memory allocation</para>
     /// </summary>
     public unsafe class NetworkReader : IDisposable
     {
@@ -45,30 +45,36 @@ namespace JamesFrowen.BitPacking
         int bitPosition;
         int bitLength;
 
+        /// <summary>
+        /// Size of buffer that is being read from
+        /// </summary>
         public int BitLength
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => this.bitLength;
         }
 
+        /// <summary>
+        /// Current bit position for reading from buffer
+        /// </summary>
         public int BitPosition
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => this.bitPosition;
         }
-
         /// <summary>
-        /// Position to the nearest byte
+        /// Current <see cref="BitPosition"/> rounded up to nearest multiple of 8
         /// </summary>
         public int BytePosition
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             // rounds up to nearest 8
             // add to 3 last bits,
             //   if any are 1 then it will roll over 4th bit.
             //   if all are 0, then nothing happens 
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => (this.bitPosition + 0b111) >> 3;
         }
+
 
         public NetworkReader() { }
 
@@ -144,17 +150,16 @@ namespace JamesFrowen.BitPacking
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        void checkNewLength(int newPosition)
+        void CheckNewLength(int newPosition)
         {
             if (newPosition > this.bitLength)
             {
-                throw new EndOfStreamException($"NewPosition:{newPosition} reader length:{this.bitLength}");
+                throw new EndOfStreamException($"Can not read over end of buffer, new position {newPosition}, length {this.bitLength} bits");
             }
         }
 
-        private void padToByte()
+        private void PadToByte()
         {
-            // todo do we need to clear skipped bits?
             this.bitPosition = this.BytePosition << 3;
         }
 
@@ -172,7 +177,7 @@ namespace JamesFrowen.BitPacking
         public ulong ReadBooleanAsUlong()
         {
             int newPosition = this.bitPosition + 1;
-            this.checkNewLength(newPosition);
+            this.CheckNewLength(newPosition);
 
             ulong* ptr = (this.longPtr + (this.bitPosition >> 6));
             ulong result = ((*ptr) >> this.bitPosition) & 0b1;
@@ -185,19 +190,19 @@ namespace JamesFrowen.BitPacking
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public sbyte ReadSByte() => (sbyte)this.ReadByte();
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public byte ReadByte() => (byte)this.readUnmasked(8);
+        public byte ReadByte() => (byte)this.ReadUnmasked(8);
 
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public short ReadInt16() => (short)this.ReadUInt16();
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ushort ReadUInt16() => (ushort)this.readUnmasked(16);
+        public ushort ReadUInt16() => (ushort)this.ReadUnmasked(16);
 
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int ReadInt32() => (int)this.ReadUInt32();
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public uint ReadUInt32() => (uint)this.readUnmasked(32);
+        public uint ReadUInt32() => (uint)this.ReadUnmasked(32);
 
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -205,7 +210,7 @@ namespace JamesFrowen.BitPacking
         public ulong ReadUInt64()
         {
             int newPosition = this.bitPosition + 64;
-            this.checkNewLength(newPosition);
+            this.CheckNewLength(newPosition);
 
             int bitsInLong = this.bitPosition & 0b11_1111;
             ulong result;
@@ -258,13 +263,13 @@ namespace JamesFrowen.BitPacking
         {
             if (bits == 0) return 0;
             // mask so we dont returns extra bits
-            return this.readUnmasked(bits) & (ulong.MaxValue >> (64 - bits));
+            return this.ReadUnmasked(bits) & (ulong.MaxValue >> (64 - bits));
         }
 
-        private ulong readUnmasked(int bits)
+        private ulong ReadUnmasked(int bits)
         {
             int newPosition = this.bitPosition + bits;
-            this.checkNewLength(newPosition);
+            this.CheckNewLength(newPosition);
 
             int bitsInLong = this.bitPosition & 0b11_1111;
             int bitsLeft = 64 - bitsInLong;
@@ -295,16 +300,41 @@ namespace JamesFrowen.BitPacking
             return result;
         }
 
-        public void UnsafeCopy(ulong* targetPtr, int count)
+        /// <summary>
+        /// Reads n <paramref name="bits"/> from buffer at <paramref name="bitPosition"/>
+        /// </summary>
+        /// <param name="bits">number of bits in value to write</param>
+        /// <param name="bitPosition">where to write bits</param>
+        public ulong ReadAtPosition(int bits, int bitPosition)
         {
-            // todo Implemented this, see NetworkWriter.UnsafeCopy
-            throw new NotImplementedException();
+            // check length here so this methods throws instead of the read below
+            this.CheckNewLength(bitPosition + bits);
+
+            int currentPosition = this.bitPosition;
+            this.bitPosition = bitPosition;
+            ulong result = this.Read(bits);
+            this.bitPosition = currentPosition;
+
+            return result;
+        }
+
+
+        /// <summary>
+        /// Moves the internal bit position
+        /// <para>For most usecases it is safer to use <see cref="ReadAtPosition"/></para>
+        /// <para>WARNING: When reading from earlier position make sure to move position back to end of buffer after reading</para>
+        /// </summary>
+        /// <param name="newPosition"></param>
+        public void MoveBitPosition(int newPosition)
+        {
+            this.CheckNewLength(newPosition);
+            this.bitPosition = newPosition;
         }
 
 
         /// <summary>
         /// <para>
-        ///    Moves poition to nearest byte then copies struct from that position
+        ///    Moves position to nearest byte then copies struct from that position
         /// </para>
         /// See <see href="https://docs.unity3d.com/ScriptReference/Unity.Collections.LowLevel.Unsafe.UnsafeUtility.CopyPtrToStructure.html">UnsafeUtility.CopyPtrToStructure</see>
         /// </summary>
@@ -313,9 +343,9 @@ namespace JamesFrowen.BitPacking
         /// <param name="byteSize"></param>
         public void PadAndCopy<T>(int byteSize, out T value) where T : struct
         {
-            this.padToByte();
+            this.PadToByte();
             int newPosition = this.bitPosition + (64 * byteSize);
-            this.checkNewLength(newPosition);
+            this.CheckNewLength(newPosition);
 
             byte* startPtr = ((byte*)this.longPtr) + (this.bitPosition >> 3);
 
@@ -325,7 +355,7 @@ namespace JamesFrowen.BitPacking
 
         /// <summary>
         /// <para>
-        ///    Moves poition to nearest byte then copies bytes from that position
+        ///    Moves position to nearest byte then copies bytes from that position
         /// </para>
         /// </summary>
         /// <param name="array"></param>
@@ -333,9 +363,9 @@ namespace JamesFrowen.BitPacking
         /// <param name="length"></param>
         public void ReadBytes(byte[] array, int offset, int length)
         {
-            this.padToByte();
+            this.PadToByte();
             int newPosition = this.bitPosition + (8 * length);
-            this.checkNewLength(newPosition);
+            this.CheckNewLength(newPosition);
 
             // todo benchmark this vs Marshal.Copy or for loop
             Buffer.BlockCopy(this.managedBuffer, this.BytePosition, array, offset, length);
@@ -344,9 +374,9 @@ namespace JamesFrowen.BitPacking
 
         public ArraySegment<byte> ReadBytesSegment(int count)
         {
-            this.padToByte();
+            this.PadToByte();
             int newPosition = this.bitPosition + (8 * count);
-            this.checkNewLength(newPosition);
+            this.CheckNewLength(newPosition);
 
             var result = new ArraySegment<byte>(this.managedBuffer, this.BytePosition, count);
             this.bitPosition = newPosition;

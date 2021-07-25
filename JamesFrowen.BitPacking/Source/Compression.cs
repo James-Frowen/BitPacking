@@ -21,13 +21,13 @@ namespace JamesFrowen.BitPacking
             if (value > maxFloat) { return maxUint; }
             if (value < minFloat) { return minUint; }
 
-            var rangeFloat = maxFloat - minFloat;
-            var rangeUint = maxUint - minUint;
+            float rangeFloat = maxFloat - minFloat;
+            uint rangeUint = maxUint - minUint;
 
             // scale value to 0->1 (as float)
-            var valueRelative = (value - minFloat) / rangeFloat;
+            float valueRelative = (value - minFloat) / rangeFloat;
             // scale value to uMin->uMax
-            var outValue = (valueRelative * rangeUint) + minUint;
+            float outValue = (valueRelative * rangeUint) + minUint;
 
             return (uint)outValue;
         }
@@ -48,14 +48,14 @@ namespace JamesFrowen.BitPacking
             if (value > maxUint) { return maxFloat; }
             if (value < minUint) { return minFloat; }
 
-            var rangeFloat = maxFloat - minFloat;
-            var rangeUint = maxUint - minUint;
+            float rangeFloat = maxFloat - minFloat;
+            uint rangeUint = maxUint - minUint;
 
             // scale value to 0->1 (as float)
             // make sure divide is float
-            var valueRelative = (value - minUint) / (float)rangeUint;
+            float valueRelative = (value - minUint) / (float)rangeUint;
             // scale value to fMin->fMax
-            var outValue = (valueRelative * rangeFloat) + minFloat;
+            float outValue = (valueRelative * rangeFloat) + minFloat;
             return outValue;
         }
     }

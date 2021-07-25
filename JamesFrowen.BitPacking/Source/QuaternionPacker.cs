@@ -48,16 +48,16 @@ namespace JamesFrowen.BitPacking
         public void Pack(NetworkWriter writer, Quaternion _value)
         {
             // make sure value is normalized (dont trust user given value, and math here assumes normalized)
-            var x = _value.x;
-            var y = _value.y;
-            var z = _value.z;
-            var w = _value.w;
+            float x = _value.x;
+            float y = _value.y;
+            float z = _value.z;
+            float w = _value.w;
 
             quickNormalize(ref x, ref y, ref z, ref w);
 
-            FindLargestIndex(x, y, z, w, out var index, out var largest);
+            FindLargestIndex(x, y, z, w, out int index, out float largest);
 
-            GetSmallerDimensions(index, x, y, z, w, out var a, out var b, out var c);
+            GetSmallerDimensions(index, x, y, z, w, out float a, out float b, out float c);
 
             // largest needs to be positive to be calculated by reader 
             // if largest is negative flip sign of others because Q = -Q
@@ -77,7 +77,7 @@ namespace JamesFrowen.BitPacking
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static void quickNormalize(ref float x, ref float y, ref float z, ref float w)
         {
-            var dot =
+            float dot =
                 (x * x) +
                 (y * y) +
                 (z * z) +
@@ -87,7 +87,7 @@ namespace JamesFrowen.BitPacking
             const float maxAllowed = 1 + allowedEpsilon;
             if (minAllowed > dot || maxAllowed < dot)
             {
-                var dotSqrt = (float)Math.Sqrt(dot);
+                float dotSqrt = (float)Math.Sqrt(dot);
                 // rotation is 0
                 if (dotSqrt < allowedEpsilon)
                 {
@@ -110,13 +110,13 @@ namespace JamesFrowen.BitPacking
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static void FindLargestIndex(float x, float y, float z, float w, out int index, out float largest)
         {
-            var x2 = x * x;
-            var y2 = y * y;
-            var z2 = z * z;
-            var w2 = w * w;
+            float x2 = x * x;
+            float y2 = y * y;
+            float z2 = z * z;
+            float w2 = w * w;
 
             index = 0;
-            var current = x2;
+            float current = x2;
             largest = x;
             // check vs sq to avoid doing mathf.abs
             if (y2 > current)
@@ -174,11 +174,11 @@ namespace JamesFrowen.BitPacking
         {
             Quaternion result;
 
-            var index = reader.Read(2);
+            ulong index = reader.Read(2);
 
-            var a = reader.ReadFloatSigned(MaxValue, this.UintMax, this.BitLength);
-            var b = reader.ReadFloatSigned(MaxValue, this.UintMax, this.BitLength);
-            var c = reader.ReadFloatSigned(MaxValue, this.UintMax, this.BitLength);
+            float a = reader.ReadFloatSigned(MaxValue, this.UintMax, this.BitLength);
+            float b = reader.ReadFloatSigned(MaxValue, this.UintMax, this.BitLength);
+            float c = reader.ReadFloatSigned(MaxValue, this.UintMax, this.BitLength);
 
             result = FromSmallerDimensions(index, a, b, c);
 
@@ -187,8 +187,8 @@ namespace JamesFrowen.BitPacking
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         static Quaternion FromSmallerDimensions(ulong largestIndex, float a, float b, float c)
         {
-            var l2 = 1 - ((a * a) + (b * b) + (c * c));
-            var largest = (float)Math.Sqrt(l2);
+            float l2 = 1 - ((a * a) + (b * b) + (c * c));
+            float largest = (float)Math.Sqrt(l2);
             // this Quaternion should already be normallized because of the way that largest is calculated
             // todo create test to validate that result is normalized
             switch (largestIndex)
