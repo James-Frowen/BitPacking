@@ -36,6 +36,11 @@ namespace JamesFrowen.BitPacking
     /// </summary>
     public unsafe class NetworkWriter
     {
+        /// <summary>
+        /// Max buffer size = 0.5MB
+        /// </summary>
+        const int MaxBufferSize = 524_288;
+
         byte[] managedBuffer;
         int bitCapacity;
         /// <summary>Allow internal buffer to resize if capcity is reached</summary>
@@ -103,9 +108,18 @@ namespace JamesFrowen.BitPacking
         }
 
 
-        void ResizeBuffer()
+        void ResizeBuffer(int minCapacity)
         {
-            int size = this.managedBuffer.Length * 2;
+            int size = managedBuffer.Length;
+            while (size < minCapacity)
+            {
+                size *= 2;
+                if (size > MaxBufferSize)
+                {
+                    throw new InvalidOperationException($"Can not resize buffer to {size} because it is above max value of {MaxBufferSize}");
+                }
+            }
+
             Debug.LogWarning($"Resizing buffer, new size:{size}");
 
             this.FreeHandle();
@@ -165,7 +179,7 @@ namespace JamesFrowen.BitPacking
             {
                 if (this.allowResize)
                 {
-                    this.ResizeBuffer();
+                    this.ResizeBuffer(newLength);
                 }
                 else
                 {
