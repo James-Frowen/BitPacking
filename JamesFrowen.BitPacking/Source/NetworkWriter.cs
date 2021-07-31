@@ -106,15 +106,14 @@ namespace JamesFrowen.BitPacking
         void ResizeBuffer()
         {
             int size = this.managedBuffer.Length * 2;
+            Debug.LogWarning($"Resizing buffer, new size:{size}");
 
-            Debug.Log(this.handle.AddrOfPinnedObject());
             this.FreeHandle();
 
             Array.Resize(ref this.managedBuffer, size);
             this.bitCapacity = size * 8;
 
             this.CreateHandle();
-            Debug.Log(this.handle.AddrOfPinnedObject());
         }
         void CreateHandle()
         {
