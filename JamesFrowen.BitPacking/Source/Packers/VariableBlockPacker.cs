@@ -22,41 +22,45 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+using System;
 using System.Runtime.CompilerServices;
 
 namespace Mirage.Serialization
 {
-    public static class BitMask
+    public static class VariableBlockPacker
     {
-        /// <summary>
-        /// Creates mask for <paramref name="bits"/>
-        /// <para>
-        /// (showing 32 bits for simplify, result is 64 bit)
-        /// <br/>
-        /// Example bits = 4 => mask = 00000000_00000000_00000000_00001111
-        /// <br/>
-        /// Example bits = 10 => mask = 00000000_00000000_00000011_11111111
-        /// </para>
-        /// </summary>
-        /// <param name="bits"></param>
-        /// <returns></returns>
+        // todo needs doc comments
+        // todo neeeds tests
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static ulong Mask(int bits)
+        public static void Pack(NetworkWriter writer, ulong value, int blockSize)
         {
-            return bits == 0 ? 0 : ulong.MaxValue >> (64 - bits);
+            // always writes atleast 1 block
+            int count = 1;
+            ulong checkValue = value >> blockSize;
+            while (checkValue != 0)
+            {
+                count++;
+                checkValue >>= blockSize;
+            }
+            // count = 1, write = b0, (1<<(1-1) -1 => 1<<0 -1) => 1 -1 => 0)
+            // count = 2, write = b01
+            // count = 3, write = b011, (1<<(3-1) -1 => 1<<2 -1) => 100 - 1 => 011)
+            writer.Write((1ul << (count - 1)) - 1, count);
+            writer.Write(value, Math.Min(64, blockSize * count));
         }
 
-        /// <summary>
-        /// Creates Mask either side of start and end
-        /// <para>Note this mask is only valid for start [0..63] and end [0..64]</para>
-        /// </summary>
-        /// <param name="start"></param>
-        /// <param name="end"></param>
-        /// <returns></returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static ulong OuterMask(int start, int end)
+        public static ulong Unpack(NetworkReader reader, int blockSize)
         {
-            return (ulong.MaxValue << start) ^ (ulong.MaxValue >> (64 - end));
+            int blocks = 1;
+            // read bits till we see a zero
+            while (reader.ReadBoolean())
+            {
+                blocks++;
+            }
+
+            return reader.Read(Math.Min(64, blocks * blockSize));
         }
     }
 }

@@ -1,6 +1,6 @@
 using System;
 
-namespace JamesFrowen.BitPacking
+namespace Mirage.Serialization
 {
     public static class LogHelper
     {

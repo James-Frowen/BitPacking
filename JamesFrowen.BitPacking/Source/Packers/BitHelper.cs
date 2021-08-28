@@ -22,41 +22,39 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-using System.Runtime.CompilerServices;
+using System;
+using UnityEngine;
 
 namespace Mirage.Serialization
 {
-    public static class BitMask
+    public static class BitHelper
     {
         /// <summary>
-        /// Creates mask for <paramref name="bits"/>
+        /// Gets the number of bits need for <paramref name="precision"/> in range negative to positive <paramref name="max"/>
         /// <para>
-        /// (showing 32 bits for simplify, result is 64 bit)
-        /// <br/>
-        /// Example bits = 4 => mask = 00000000_00000000_00000000_00001111
-        /// <br/>
-        /// Example bits = 10 => mask = 00000000_00000000_00000011_11111111
+        /// WARNING: these methods are not fast, dont use in hotpath
         /// </para>
         /// </summary>
-        /// <param name="bits"></param>
+        /// <param name="max"></param>
+        /// <param name="precision">lowest precision required, bit count will round up so real precision might be higher</param>
         /// <returns></returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static ulong Mask(int bits)
+        public static int BitCount(float max, float precision)
         {
-            return bits == 0 ? 0 : ulong.MaxValue >> (64 - bits);
+            return Mathf.FloorToInt(Mathf.Log(2 * max / precision, 2)) + 1;
         }
 
         /// <summary>
-        /// Creates Mask either side of start and end
-        /// <para>Note this mask is only valid for start [0..63] and end [0..64]</para>
+        /// Gets the number of bits need for <paramref name="max"/>
+        /// <para>
+        /// WARNING: these methods are not fast, dont use in hotpath
+        /// </para>
         /// </summary>
-        /// <param name="start"></param>
-        /// <param name="end"></param>
+        /// <param name="max"></param>
+        /// <param name="precision">lowest precision required, bit count will round up so real precision might be higher</param>
         /// <returns></returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static ulong OuterMask(int start, int end)
+        public static int BitCount(ulong max)
         {
-            return (ulong.MaxValue << start) ^ (ulong.MaxValue >> (64 - end));
+            return (int)Math.Floor(Math.Log(max, 2)) + 1;
         }
     }
 }

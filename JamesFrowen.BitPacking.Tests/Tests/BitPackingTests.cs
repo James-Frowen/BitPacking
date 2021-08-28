@@ -1,7 +1,7 @@
 using NUnit.Framework;
 using System;
 
-namespace JamesFrowen.BitPacking.Tests
+namespace Mirage.Serialization.Tests
 {
     public class BitPackingTests
     {

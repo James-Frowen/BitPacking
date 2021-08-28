@@ -3,7 +3,7 @@ using System;
 using System.Collections;
 using UnityEngine;
 
-namespace JamesFrowen.BitPacking.Tests
+namespace Mirage.Serialization.Tests
 {
     public class PositionPackerTests : NetworkWriterTestBase
     {

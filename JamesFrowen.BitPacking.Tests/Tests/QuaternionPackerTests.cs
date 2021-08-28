@@ -4,7 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace JamesFrowen.BitPacking.Tests
+namespace Mirage.Serialization.Tests
 {
     public class QuaternionPackerTests : NetworkWriterTestBase
     {

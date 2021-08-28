@@ -28,7 +28,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Unity.Collections.LowLevel.Unsafe;
 
-namespace JamesFrowen.BitPacking
+namespace Mirage.Serialization
 {
     /// <summary>
     /// Bit writer, writes values to a buffer on a bit level
@@ -41,8 +41,11 @@ namespace JamesFrowen.BitPacking
         ulong* longPtr;
         bool needsDisposing;
 
-
+        /// <summary>Current read position</summary>
         int bitPosition;
+        /// <summary>Offset of given buffer</summary>
+        int bitOffset;
+        /// <summary>Length of given buffer</summary>
         int bitLength;
 
         /// <summary>
@@ -123,6 +126,7 @@ namespace JamesFrowen.BitPacking
             this.needsDisposing = true;
 
             this.bitPosition = position * 8;
+            this.bitOffset = position * 8;
             this.bitLength = this.bitPosition + (length * 8);
             this.managedBuffer = array;
             this.handle = GCHandle.Alloc(this.managedBuffer, GCHandleType.Pinned);
@@ -154,8 +158,12 @@ namespace JamesFrowen.BitPacking
         {
             if (newPosition > this.bitLength)
             {
-                throw new EndOfStreamException($"Can not read over end of buffer, new position {newPosition}, length {this.bitLength} bits");
+                this.ThrowPositionOverLength(newPosition);
             }
+        }
+        void ThrowPositionOverLength(int newPosition)
+        {
+            throw new EndOfStreamException($"Can not read over end of buffer, new position {newPosition}, length {this.bitLength} bits");
         }
 
         private void PadToByte()
@@ -325,8 +333,13 @@ namespace JamesFrowen.BitPacking
         /// <para>WARNING: When reading from earlier position make sure to move position back to end of buffer after reading</para>
         /// </summary>
         /// <param name="newPosition"></param>
+        /// <exception cref="ArgumentOutOfRangeException">throws when <paramref name="newPosition"/> is less than <see cref="bitOffset"/></exception>
         public void MoveBitPosition(int newPosition)
         {
+            if (newPosition < this.bitOffset)
+            {
+                throw new ArgumentOutOfRangeException(nameof(newPosition), newPosition, $"New position can not be less than buffer offset, Buffer offset: {this.bitOffset}");
+            }
             this.CheckNewLength(newPosition);
             this.bitPosition = newPosition;
         }

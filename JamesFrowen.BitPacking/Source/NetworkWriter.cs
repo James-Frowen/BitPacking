@@ -28,7 +28,7 @@ using System.Runtime.InteropServices;
 using Unity.Collections.LowLevel.Unsafe;
 using UnityEngine;
 
-namespace JamesFrowen.BitPacking
+namespace Mirage.Serialization
 {
     /// <summary>
     /// Bit writer, writes values to a buffer on a bit level
@@ -108,19 +108,20 @@ namespace JamesFrowen.BitPacking
         }
 
 
-        void ResizeBuffer(int minCapacity)
+        void ResizeBuffer(int minBitCapacity)
         {
-            int size = managedBuffer.Length;
-            while (size < minCapacity)
+            int minByteCapacity = minBitCapacity / 8;
+            int size = this.managedBuffer.Length;
+            while (size < minByteCapacity)
             {
                 size *= 2;
                 if (size > MaxBufferSize)
                 {
-                    throw new InvalidOperationException($"Can not resize buffer to {size} because it is above max value of {MaxBufferSize}");
+                    throw new InvalidOperationException($"Can not resize buffer to {size} bytes because it is above max value of {MaxBufferSize}");
                 }
             }
 
-            Debug.LogWarning($"Resizing buffer, new size:{size}");
+            Debug.LogWarning($"Resizing buffer, new size:{size} bytes");
 
             this.FreeHandle();
 
@@ -183,9 +184,13 @@ namespace JamesFrowen.BitPacking
                 }
                 else
                 {
-                    throw new InvalidOperationException($"Can not write over end of buffer, new length {newLength}, capacity {this.bitCapacity}");
+                    this.ThrowLengthOverCapacity(newLength);
                 }
             }
+        }
+        void ThrowLengthOverCapacity(int newLength)
+        {
+            throw new InvalidOperationException($"Can not write over end of buffer, new length {newLength}, capacity {this.bitCapacity}");
         }
 
         private void PadToByte()

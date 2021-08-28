@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 
-namespace JamesFrowen.BitPacking.Tests
+namespace Mirage.Serialization.Tests
 {
     public class TestRandom
     {

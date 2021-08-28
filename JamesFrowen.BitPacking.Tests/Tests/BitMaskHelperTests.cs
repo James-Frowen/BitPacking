@@ -1,6 +1,6 @@
 ﻿using NUnit.Framework;
 
-namespace JamesFrowen.BitPacking.Tests
+namespace Mirage.Serialization.Tests
 {
     public class BitMaskHelperTests
     {
