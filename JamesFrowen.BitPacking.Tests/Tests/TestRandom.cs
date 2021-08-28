@@ -1,38 +1,17 @@
-﻿using UnityEngine;
+﻿using System;
 
-namespace Mirage.Serialization.Tests
+namespace JamesFrowen.BitPacking.Tests
 {
-    public class TestRandom
+    public static class TestRandom
     {
-        System.Random random = new System.Random();
-
-        public uint Uint(int min, int max)
+        static Random random = new Random();
+        public static float Range(float a, float b)
         {
-            return (uint)this.random.Next(min, max);
+            return (float)((random.NextDouble() * (b - a)) + a);
         }
-
-        public float Float(float min, float max)
+        public static int Range(int a, int b)
         {
-            return (float)(this.random.NextDouble() * (max - min) + min);
-        }
-
-        public Vector3 Vector3(Vector3 min, Vector3 max)
-        {
-            return new Vector3(
-                this.Float(min.x, max.x),
-                this.Float(min.y, max.y),
-                this.Float(min.z, max.z)
-            );
-        }
-
-        public Quaternion Quaternion()
-        {
-            return new Quaternion(
-                this.Float(-1, 1),
-                this.Float(-1, 1),
-                this.Float(-1, 1),
-                this.Float(-1, 1)
-            ).normalized;
+            return random.Next(a, b);
         }
     }
 }

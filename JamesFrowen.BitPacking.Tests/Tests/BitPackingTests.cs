@@ -1,7 +1,9 @@
+using Mirage.Serialization;
 using NUnit.Framework;
 using System;
+using System.Runtime.CompilerServices;
 
-namespace Mirage.Serialization.Tests
+namespace JamesFrowen.BitPacking.Tests
 {
     public class BitPackingTests
     {
@@ -11,7 +13,8 @@ namespace Mirage.Serialization.Tests
         [SetUp]
         public void Setup()
         {
-            this.writer = new NetworkWriter(1300);
+            // dont allow resizing for this test, because we test throw
+            this.writer = new NetworkWriter(1300, false);
             this.reader = new NetworkReader();
         }
 
@@ -96,28 +99,75 @@ namespace Mirage.Serialization.Tests
                 this.writer.Write(0, 1);
             });
 
-            IndexOutOfRangeException exception = Assert.Throws<IndexOutOfRangeException>(() =>
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
             {
                 this.writer.Write(0, 1);
             });
-            Assert.That(exception, Has.Message.EqualTo("Index was outside the bounds of the array."));
+            const int max = 162 * 64 + 64;
+            Assert.That(exception, Has.Message.EqualTo($"Can not write over end of buffer, new length {max + 1}, capacity {max}"));
         }
 
         [Test]
         [Repeat(10)]
-        public void WritesAllValueSizesCorrectly([Range(0, 63)] int writerBits, [Range(0, 64)] int valueBits)
+        public void WritesAllValueSizesCorrectly([Range(0, 63)] int startPosition, [Range(0, 64)] int valueBits)
         {
             ulong randomValue = ULongRandom.Next();
-            this.writer.Write(0, writerBits);
+            this.writer.Write(0, startPosition);
 
             ulong maskedValue = randomValue & BitMask.Mask(valueBits);
 
             this.writer.Write(randomValue, valueBits);
             this.reader.Reset(this.writer.ToArray());
 
-            _ = this.reader.Read(writerBits);
+            _ = this.reader.Read(startPosition);
             ulong result = this.reader.Read(valueBits);
             Assert.That(result, Is.EqualTo(maskedValue));
+        }
+
+        [Test]
+        public void WritesAllMasksCorrectly()
+        {
+            // we can't use [range] args because we have to skip cases where end is over 64
+            int count = 0;
+            for (int start = 0; start < 64; start++)
+            {
+                for (int bits = 0; bits < 64; bits++)
+                {
+                    int end = start + bits;
+                    if (end > 64)
+                    {
+                        continue;
+                    }
+
+                    ulong expected = SlowMask(start, end);
+                    ulong actual = BitMask.OuterMask(start, end);
+                    count++;
+                    if (expected != actual)
+                    {
+                        Assert.Fail($"Failed, start:{start} bits:{bits}");
+                    }
+                }
+            }
+            //UnityEngine.Debug.Log($"{count} masks tested");
+        }
+
+        /// <summary>
+        /// Slower but correct mask
+        /// </summary>
+        /// <param name="start"></param>
+        /// <param name="end"></param>
+        /// <returns></returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static ulong SlowMask(int start, int end)
+        {
+            // old mask, doesn't work when bitposition before/after is multiple of 64
+            //           so we need to check if values == 0 before shifting masks
+            ulong mask1 = start == 0 ? 0ul : (ulong.MaxValue >> (64 - start));
+            // note: new position can not be 0, so no need to worry about 
+            ulong mask2 = (end & 0b11_1111) == 0 ? 0ul : (ulong.MaxValue << end /*we can use full position here as c# will mask it to just 6 bits*/);
+            // mask either side of value, eg writing 4 bits at position 3: 111...111_1000_0111
+            ulong mask = mask1 | mask2;
+            return mask;
         }
     }
 

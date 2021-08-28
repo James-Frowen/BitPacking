@@ -1,6 +1,7 @@
-﻿using NUnit.Framework;
+﻿using Mirage.Serialization;
+using NUnit.Framework;
 
-namespace Mirage.Serialization.Tests
+namespace JamesFrowen.BitPacking.Tests
 {
     public class BitPackingProperties
     {

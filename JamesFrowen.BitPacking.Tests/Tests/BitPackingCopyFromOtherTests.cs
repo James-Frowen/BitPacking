@@ -1,6 +1,7 @@
+using Mirage.Serialization;
 using NUnit.Framework;
 
-namespace Mirage.Serialization.Tests
+namespace JamesFrowen.BitPacking.Tests
 {
     public class BitPackingCopyFromOtherTests
     {
@@ -74,11 +75,11 @@ namespace Mirage.Serialization.Tests
         [Repeat(100)]
         public void CopyFromOtherWriterUnAlignedBig()
         {
-            ulong value1 = (ulong)UnityEngine.Random.Range(0, 20000);
-            ulong value2 = (ulong)UnityEngine.Random.Range(0, 20000);
-            ulong value3 = (ulong)UnityEngine.Random.Range(0, 20000);
-            ulong value4 = (ulong)UnityEngine.Random.Range(0, 20000);
-            ulong value5 = (ulong)UnityEngine.Random.Range(0, 20000);
+            ulong value1 = (ulong)TestRandom.Range(0, 20000);
+            ulong value2 = (ulong)TestRandom.Range(0, 20000);
+            ulong value3 = (ulong)TestRandom.Range(0, 20000);
+            ulong value4 = (ulong)TestRandom.Range(0, 20000);
+            ulong value5 = (ulong)TestRandom.Range(0, 20000);
             this.otherWriter.Write(value1, 46);
             this.otherWriter.Write(value2, 47);
             this.otherWriter.Write(value3, 48);
@@ -114,11 +115,11 @@ namespace Mirage.Serialization.Tests
             }
 
 
-            ulong value1 = (ulong)UnityEngine.Random.Range(0, 20000);
-            ulong value2 = (ulong)UnityEngine.Random.Range(0, 20000);
-            ulong value3 = (ulong)UnityEngine.Random.Range(0, 20000);
-            ulong value4 = (ulong)UnityEngine.Random.Range(0, 20000);
-            ulong value5 = (ulong)UnityEngine.Random.Range(0, 20000);
+            ulong value1 = (ulong)TestRandom.Range(0, 20000);
+            ulong value2 = (ulong)TestRandom.Range(0, 20000);
+            ulong value3 = (ulong)TestRandom.Range(0, 20000);
+            ulong value4 = (ulong)TestRandom.Range(0, 20000);
+            ulong value5 = (ulong)TestRandom.Range(0, 20000);
             this.otherWriter.Write(value1, 46);
             this.otherWriter.Write(value2, 47);
             this.otherWriter.Write(value3, 48);
