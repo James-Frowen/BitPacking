@@ -25,7 +25,7 @@ SOFTWARE.
 using System;
 using UnityEngine;
 
-namespace Mirage.Serialization
+namespace JamesFrowen.BitPacking
 {
     public static class BitHelper
     {

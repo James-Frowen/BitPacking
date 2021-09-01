@@ -1,6 +1,6 @@
 using System.Runtime.CompilerServices;
 
-namespace Mirage.Serialization
+namespace JamesFrowen.BitPacking
 {
     /// <summary>
     /// See <see href="https://gist.github.com/mfuerstenau/ba870a29e16536fdbaba">zigzag encoding</see><br/>

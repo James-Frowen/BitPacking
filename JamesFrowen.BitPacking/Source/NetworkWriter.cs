@@ -28,7 +28,7 @@ using System.Runtime.InteropServices;
 using Unity.Collections.LowLevel.Unsafe;
 using UnityEngine;
 
-namespace Mirage.Serialization
+namespace JamesFrowen.BitPacking
 {
     /// <summary>
     /// Bit writer, writes values to a buffer on a bit level

@@ -1,4 +1,3 @@
-using Mirage.Serialization;
 using NUnit.Framework;
 using Random = JamesFrowen.BitPacking.Tests.TestRandom;
 

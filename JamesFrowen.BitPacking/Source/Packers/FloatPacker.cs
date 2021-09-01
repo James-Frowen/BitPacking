@@ -26,7 +26,7 @@ using System;
 using System.Runtime.CompilerServices;
 using UnityEngine;
 
-namespace Mirage.Serialization
+namespace JamesFrowen.BitPacking
 {
 
     /// <summary>

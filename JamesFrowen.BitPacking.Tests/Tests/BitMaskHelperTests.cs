@@ -1,5 +1,4 @@
-﻿using Mirage.Serialization;
-using NUnit.Framework;
+﻿using NUnit.Framework;
 
 namespace JamesFrowen.BitPacking.Tests
 {

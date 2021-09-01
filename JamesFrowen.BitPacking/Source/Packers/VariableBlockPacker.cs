@@ -25,7 +25,7 @@ SOFTWARE.
 using System;
 using System.Runtime.CompilerServices;
 
-namespace Mirage.Serialization
+namespace JamesFrowen.BitPacking
 {
     public static class VariableBlockPacker
     {

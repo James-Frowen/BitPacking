@@ -24,7 +24,7 @@ SOFTWARE.
 
 using UnityEngine;
 
-namespace Mirage.Serialization
+namespace JamesFrowen.BitPacking
 {
     public sealed class Vector2Packer
     {
