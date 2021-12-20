@@ -143,14 +143,22 @@ namespace JamesFrowen.BitPacking
         }
 
         /// <summary>
-        /// Can atleast <paramref name="byteLength"/> bytes
+        /// Can atleast <paramref name="readCount"/> bits
         /// </summary>
-        /// <param name="byteLength"></param>
         /// <returns></returns>
-        public bool CanReadBytes(int byteLength)
+        public bool CanReadBits(int readCount)
         {
-            return (this.bitPosition + (byteLength * 8)) <= this.bitLength;
+            return (bitPosition + readCount) <= bitLength;
+        }
 
+        /// <summary>
+        /// Can atleast <paramref name="readCount"/> bytes
+        /// </summary>
+        /// <param name="readCount"></param>
+        /// <returns></returns>
+        public bool CanReadBytes(int readCount)
+        {
+            return (bitPosition + (readCount * 8)) <= bitLength;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
