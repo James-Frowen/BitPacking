@@ -26,7 +26,6 @@ using System;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using Unity.Collections.LowLevel.Unsafe;
 
 namespace JamesFrowen.BitPacking
 {
@@ -334,7 +333,6 @@ namespace JamesFrowen.BitPacking
             return result;
         }
 
-
         /// <summary>
         /// Moves the internal bit position
         /// <para>For most usecases it is safer to use <see cref="ReadAtPosition"/></para>
@@ -352,26 +350,24 @@ namespace JamesFrowen.BitPacking
             this.bitPosition = newPosition;
         }
 
-
         /// <summary>
         /// <para>
         ///    Moves position to nearest byte then copies struct from that position
         /// </para>
-        /// See <see href="https://docs.unity3d.com/ScriptReference/Unity.Collections.LowLevel.Unsafe.UnsafeUtility.CopyPtrToStructure.html">UnsafeUtility.CopyPtrToStructure</see>
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="value"></param>
         /// <param name="byteSize"></param>
-        public void PadAndCopy<T>(int byteSize, out T value) where T : struct
+        public void PadAndCopy<T>(int byteSize, out T value) where T : unmanaged
         {
-            this.PadToByte();
-            int newPosition = this.bitPosition + (64 * byteSize);
-            this.CheckNewLength(newPosition);
+            PadToByte();
+            int newPosition = bitPosition + (64 * byteSize);
+            CheckNewLength(newPosition);
 
-            byte* startPtr = ((byte*)this.longPtr) + (this.bitPosition >> 3);
+            byte* startPtr = ((byte*)longPtr) + (bitPosition >> 3);
 
-            UnsafeUtility.CopyPtrToStructure(startPtr, out value);
-            this.bitPosition = newPosition;
+            value = *(T*)startPtr;
+            bitPosition = newPosition;
         }
 
         /// <summary>
