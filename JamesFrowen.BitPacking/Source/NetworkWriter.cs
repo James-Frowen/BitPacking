@@ -25,7 +25,6 @@ SOFTWARE.
 using System;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using Unity.Collections.LowLevel.Unsafe;
 using UnityEngine;
 
 namespace JamesFrowen.BitPacking
@@ -360,20 +359,19 @@ namespace JamesFrowen.BitPacking
         /// <para>
         ///    Moves position to nearest byte then copies struct to that position
         /// </para>
-        /// See <see href="https://docs.unity3d.com/ScriptReference/Unity.Collections.LowLevel.Unsafe.UnsafeUtility.CopyStructureToPtr.html">UnsafeUtility.CopyStructureToPtr</see>
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="value"></param>
-        /// <param name="byteSize">size of struct, in bytes</param>
-        public void PadAndCopy<T>(ref T value, int byteSize) where T : struct
+        public void PadAndCopy<T>(in T value) where T : unmanaged
         {
             this.PadToByte();
-            int newPosition = this.bitPosition + (8 * byteSize);
+            int newPosition = this.bitPosition + (8 * sizeof(T));
             this.CheckCapacity(newPosition);
 
             byte* startPtr = ((byte*)this.longPtr) + (this.bitPosition >> 3);
 
-            UnsafeUtility.CopyStructureToPtr(ref value, startPtr);
+            var ptr = (T*)startPtr;
+            *ptr = value;
             this.bitPosition = newPosition;
         }
 
@@ -403,7 +401,7 @@ namespace JamesFrowen.BitPacking
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void CopyFromWriter(NetworkWriter other)
         {
-            CopyFromWriter(other, 0, other.BitPosition);
+            this.CopyFromWriter(other, 0, other.BitPosition);
         }
 
         /// <summary>
