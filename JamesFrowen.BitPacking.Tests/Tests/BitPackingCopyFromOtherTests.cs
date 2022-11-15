@@ -1,6 +1,6 @@
 using Mirage.Serialization;
 using NUnit.Framework;
-using Random = JamesFrowen.BitPacking.Tests.TestRandom;
+using Random = Mirage.Tests.BitPacking.TestRandom;
 
 namespace Mirage.Tests.Runtime.Serialization
 {

@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using Mirage.Serialization;
 using NUnit.Framework;
 using UnityEngine;
-using Random = JamesFrowen.BitPacking.Tests.TestRandom;
+using Random = Mirage.Tests.BitPacking.TestRandom;
 
 namespace Mirage.Tests.Runtime.Serialization.Packers
 {

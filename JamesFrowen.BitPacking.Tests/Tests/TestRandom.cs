@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace JamesFrowen.BitPacking.Tests
+namespace Mirage.Tests.BitPacking
 {
     public static class TestRandom
     {

@@ -4,7 +4,7 @@ using Mirage.Serialization;
 using NUnit.Framework;
 using NUnit.Framework.Constraints;
 using UnityEngine;
-using Random = JamesFrowen.BitPacking.Tests.TestRandom;
+using Random = Mirage.Tests.BitPacking.TestRandom;
 using Range = NUnit.Framework.RangeAttribute;
 
 namespace Mirage.Tests.Runtime.Serialization.Packers
