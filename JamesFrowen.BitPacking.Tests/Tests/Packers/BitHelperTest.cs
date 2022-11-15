@@ -1,6 +1,7 @@
+using Mirage.Serialization;
 using NUnit.Framework;
 
-namespace JamesFrowen.BitPacking.Tests.Packers
+namespace Mirage.Tests.Runtime.Serialization.Packers
 {
     public class BitHelperTest
     {

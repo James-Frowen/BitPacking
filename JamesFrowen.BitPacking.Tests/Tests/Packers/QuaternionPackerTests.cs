@@ -1,24 +1,22 @@
-using NUnit.Framework;
-using NUnit.Framework.Constraints;
 using System.Collections;
 using System.Collections.Generic;
+using Mirage.Serialization;
+using NUnit.Framework;
+using NUnit.Framework.Constraints;
 using UnityEngine;
 using Random = JamesFrowen.BitPacking.Tests.TestRandom;
 using Range = NUnit.Framework.RangeAttribute;
 
-namespace JamesFrowen.BitPacking.Tests.Packers
+namespace Mirage.Tests.Runtime.Serialization.Packers
 {
     public class QuaternionPackerTests : PackerTestBase
     {
-        static Quaternion GetRandomQuaternion()
+        private static Quaternion GetRandomQuaternion()
         {
-#if UNITY_EDITOR
-            return Random.rotationUniform.normalized;
-#else
             return GetRandomQuaternionNotNormalized().normalized;
-#endif
         }
-        static Quaternion GetRandomQuaternionNotNormalized()
+
+        private static Quaternion GetRandomQuaternionNotNormalized()
         {
             return new Quaternion(
                 Random.Range(-1, 1),
@@ -33,29 +31,28 @@ namespace JamesFrowen.BitPacking.Tests.Packers
         public void IdentityIsUnpackedAsIdentity()
         {
             var packer = new QuaternionPacker(10);
-            packer.Pack(this.writer, Quaternion.identity);
-            Quaternion unpack = packer.Unpack(this.GetReader());
+            packer.Pack(writer, Quaternion.identity);
+            var unpack = packer.Unpack(GetReader());
 
             Assert.That(unpack, Is.EqualTo(Quaternion.identity));
         }
 
-
-        static IEnumerable ReturnsCorrectIndexCases()
+        private static IEnumerable ReturnsCorrectIndexCases()
         {
             var values = new List<float>() { 0.1f, 0.2f, 0.3f, 0.4f };
             // abcd are index
             // testing all permutation, index can only be used once
-            for (int a = 0; a < 4; a++)
+            for (var a = 0; a < 4; a++)
             {
-                for (int b = 0; b < 4; b++)
+                for (var b = 0; b < 4; b++)
                 {
                     if (b == a) { continue; }
 
-                    for (int c = 0; c < 4; c++)
+                    for (var c = 0; c < 4; c++)
                     {
                         if (c == a || c == b) { continue; }
 
-                        for (int d = 0; d < 4; d++)
+                        for (var d = 0; d < 4; d++)
                         {
                             if (d == a || d == b || d == c) { continue; }
 
@@ -77,14 +74,13 @@ namespace JamesFrowen.BitPacking.Tests.Packers
         [TestCaseSource(nameof(ReturnsCorrectIndexCases))]
         public uint ReturnsCorrectIndex(Quaternion q)
         {
-            QuaternionPacker.FindLargestIndex(ref q, out uint index);
+            QuaternionPacker.FindLargestIndex(ref q, out var index);
             return index;
         }
 
-
-        static IEnumerable CompressesAndDecompressesCases()
+        private static IEnumerable PackAndUnpackCases()
         {
-            for (int i = 8; i < 12; i++)
+            for (var i = 8; i < 12; i++)
             {
                 yield return new TestCaseData(i, Quaternion.identity);
                 yield return new TestCaseData(i, Quaternion.Euler(25, 30, 0));
@@ -96,49 +92,55 @@ namespace JamesFrowen.BitPacking.Tests.Packers
         }
 
         [Test]
-        [TestCaseSource(nameof(CompressesAndDecompressesCases))]
+        [TestCaseSource(nameof(PackAndUnpackCases))]
 #if !UNITY_EDITOR
         [Ignore("Quaternion.Euler Requires unity engine to run")]
 #endif
         public void PackAndUnpack(int bits, Quaternion inValue)
         {
-            this.RunPackAndUnpack(bits, inValue);
+            RunPackAndUnpack(bits, inValue);
         }
 
 
         [Test]
         [Repeat(1000)]
+#if !UNITY_EDITOR
+        [Ignore("Quaternion.Euler Requires unity engine to run")]
+#endif
         public void PackAndUnpackRepeat([Range(8, 12)] int bits)
         {
-            Quaternion inValue = GetRandomQuaternion();
+            var inValue = GetRandomQuaternion();
 
-            this.RunPackAndUnpack(bits, inValue);
+            RunPackAndUnpack(bits, inValue);
         }
 
         [Test]
         [Repeat(1000)]
+#if !UNITY_EDITOR
+        [Ignore("Quaternion.Euler Requires unity engine to run")]
+#endif
         public void PackAndUnpackRepeatNotNormalized([Range(8, 12)] int bits)
         {
-            Quaternion inValueNotNormalized = GetRandomQuaternionNotNormalized();
+            var inValueNotNormalized = GetRandomQuaternionNotNormalized();
 
-            this.RunPackAndUnpack(bits, inValueNotNormalized);
+            RunPackAndUnpack(bits, inValueNotNormalized);
         }
 
         private void RunPackAndUnpack(int bits, Quaternion inValueNotNormalized)
         {
-            Quaternion inValue = inValueNotNormalized.normalized;
+            var inValue = inValueNotNormalized.normalized;
 
             // precision for 1 element
-            float max = (1 / Mathf.Sqrt(2));
-            float precision = 2 * max / ((1 << bits) - 1);
+            var max = (1 / Mathf.Sqrt(2));
+            var precision = 2 * max / ((1 << bits) - 1);
             // allow extra precision because largest is caculated using the other 3 values so may be out side of precision
             precision *= 2;
 
             var packer = new QuaternionPacker(bits);
 
-            packer.Pack(this.writer, inValueNotNormalized);
+            packer.Pack(writer, inValueNotNormalized);
 
-            Quaternion outValue = packer.Unpack(this.GetReader());
+            var outValue = packer.Unpack(GetReader());
             //Debug.Log($"Packed: ({inValue.x:0.000},{inValue.y:0.000},{inValue.z:0.000},{inValue.w:0.000}) " +
             //          $"UnPacked: ({outValue.x:0.000},{outValue.y:0.000},{outValue.z:0.000},{outValue.w:0.000})");
 
@@ -147,15 +149,15 @@ namespace JamesFrowen.BitPacking.Tests.Packers
             Assert.That(outValue.z, Is.Not.NaN, "z was NaN");
             Assert.That(outValue.w, Is.Not.NaN, "w was NaN");
 
-            float assertSign = getAssertSign(inValue, outValue);
+            var assertSign = getAssertSign(inValue, outValue);
 
             Assert.That(outValue.x, IsUnSignedEqualWithIn(inValue.x), $"x off by {Mathf.Abs(assertSign * inValue.x - outValue.x)}");
             Assert.That(outValue.y, IsUnSignedEqualWithIn(inValue.y), $"y off by {Mathf.Abs(assertSign * inValue.y - outValue.y)}");
             Assert.That(outValue.z, IsUnSignedEqualWithIn(inValue.z), $"z off by {Mathf.Abs(assertSign * inValue.z - outValue.z)}");
             Assert.That(outValue.w, IsUnSignedEqualWithIn(inValue.w), $"w off by {Mathf.Abs(assertSign * inValue.w - outValue.w)}");
 
-            Vector3 inVec = inValue * Vector3.forward;
-            Vector3 outVec = outValue * Vector3.forward;
+            var inVec = inValue * Vector3.forward;
+            var outVec = outValue * Vector3.forward;
 
             // allow for extra precision when rotating vector
             Assert.AreEqual(inVec.x, outVec.x, precision * 2, $"vx off by {Mathf.Abs(inVec.x - outVec.x)}");
@@ -174,9 +176,9 @@ namespace JamesFrowen.BitPacking.Tests.Packers
         [Repeat(1000)]
         public void FastNormalize()
         {
-            Quaternion q1 = GetRandomQuaternionNotNormalized();
+            var q1 = GetRandomQuaternionNotNormalized();
             // create copy here so it can be used in ref without chanigng q1
-            Quaternion q2 = q1;
+            var q2 = q1;
             QuaternionPacker.QuickNormalize(ref q2);
 
             Assert.That(q2, Is.EqualTo(q1.normalized));
@@ -188,20 +190,84 @@ namespace JamesFrowen.BitPacking.Tests.Packers
         /// <param name="inValue"></param>
         /// <param name="outValue"></param>
         /// <returns></returns>
-        static float getAssertSign(Quaternion inValue, Quaternion outValue)
+        private static float getAssertSign(Quaternion inValue, Quaternion outValue)
         {
             // keep same index for in/out because largest *might* have chagned if all elements are equal
-            QuaternionPacker.FindLargestIndex(ref inValue, out uint index);
+            QuaternionPacker.FindLargestIndex(ref inValue, out var index);
 
-            float inLargest = inValue[(int)index];
-            float outLargest = outValue[(int)index];
+            var inLargest = inValue[(int)index];
+            var outLargest = outValue[(int)index];
             // flip sign of A if largest is is negative
             // Q == (-Q)
-            float inSign = Mathf.Sign(inLargest);
-            float outSign = Mathf.Sign(outLargest);
+            var inSign = Mathf.Sign(inLargest);
+            var outSign = Mathf.Sign(outLargest);
 
             float assertSign = inSign == outSign ? 1 : -1;
             return assertSign;
+        }
+
+
+        private static IEnumerable PackToIntCases()
+        {
+            yield return new TestCaseData(Quaternion.identity);
+            yield return new TestCaseData(Quaternion.Euler(25, 30, 0));
+            yield return new TestCaseData(Quaternion.Euler(-50, 30, 90));
+            yield return new TestCaseData(Quaternion.Euler(90, 90, 180));
+            yield return new TestCaseData(Quaternion.Euler(-20, 0, 45));
+            yield return new TestCaseData(Quaternion.Euler(80, 30, -45));
+        }
+        [Test]
+        [TestCaseSource(nameof(PackToIntCases))]
+#if !UNITY_EDITOR
+        [Ignore("Quaternion.Euler Requires unity engine to run")]
+#endif
+        public void PackAsInt(Quaternion inValue)
+        {
+            // precision for 1 element
+            var max = (1 / Mathf.Sqrt(2));
+            var precision = 2 * max / ((1 << 10) - 1);
+            // allow extra precision because largest is caculated using the other 3 values so may be out side of precision
+            precision *= 2;
+
+            var encoded = QuaternionPacker.PackAsInt(inValue);
+            var outValue = QuaternionPacker.UnpackFromInt(encoded);
+
+            //Debug.Log($"Packed: ({inValue.x:0.000},{inValue.y:0.000},{inValue.z:0.000},{inValue.w:0.000}) " +
+            //          $"UnPacked: ({outValue.x:0.000},{outValue.y:0.000},{outValue.z:0.000},{outValue.w:0.000})");
+
+            Assert.That(outValue.x, Is.Not.NaN, "x was NaN");
+            Assert.That(outValue.y, Is.Not.NaN, "y was NaN");
+            Assert.That(outValue.z, Is.Not.NaN, "z was NaN");
+            Assert.That(outValue.w, Is.Not.NaN, "w was NaN");
+
+            var assertSign = getAssertSign(inValue, outValue);
+
+            Assert.That(outValue.x, IsUnSignedEqualWithIn(inValue.x), $"x off by {Mathf.Abs(assertSign * inValue.x - outValue.x)}");
+            Assert.That(outValue.y, IsUnSignedEqualWithIn(inValue.y), $"y off by {Mathf.Abs(assertSign * inValue.y - outValue.y)}");
+            Assert.That(outValue.z, IsUnSignedEqualWithIn(inValue.z), $"z off by {Mathf.Abs(assertSign * inValue.z - outValue.z)}");
+            Assert.That(outValue.w, IsUnSignedEqualWithIn(inValue.w), $"w off by {Mathf.Abs(assertSign * inValue.w - outValue.w)}");
+
+            var inVec = inValue * Vector3.forward;
+            var outVec = outValue * Vector3.forward;
+
+            // allow for extra precision when rotating vector
+            Assert.AreEqual(inVec.x, outVec.x, precision * 2, $"vx off by {Mathf.Abs(inVec.x - outVec.x)}");
+            Assert.AreEqual(inVec.y, outVec.y, precision * 2, $"vy off by {Mathf.Abs(inVec.y - outVec.y)}");
+            Assert.AreEqual(inVec.z, outVec.z, precision * 2, $"vz off by {Mathf.Abs(inVec.z - outVec.z)}");
+
+
+            EqualConstraint IsUnSignedEqualWithIn(float v)
+            {
+                return Is.EqualTo(v).Within(precision).Or.EqualTo(assertSign * v).Within(precision);
+            }
+        }
+
+        [Test]
+        [Description("Quaternion is a likely value, so packing to 0 will be useful compression")]
+        public void PackIdentityShouldBeZero()
+        {
+            var encoded = QuaternionPacker.PackAsInt(Quaternion.identity);
+            Assert.That(encoded, Is.Zero);
         }
     }
 }

@@ -1,9 +1,10 @@
-using NUnit.Framework;
 using System;
+using Mirage.Serialization;
+using NUnit.Framework;
 using UnityEngine;
 using Range = NUnit.Framework.RangeAttribute;
 
-namespace JamesFrowen.BitPacking.Tests.Packers
+namespace Mirage.Tests.Runtime.Serialization.Packers
 {
     public class FloatPackerCreateTest : PackerTestBase
     {
@@ -15,26 +16,38 @@ namespace JamesFrowen.BitPacking.Tests.Packers
         {
             var packer = new FloatPacker(100, precision);
 
-            packer.Pack(this.writer, 1f);
-            return this.writer.BitPosition;
+            packer.Pack(writer, 1f);
+            return writer.BitPosition;
         }
 
         [Test]
-        public void PackFromBitCountPacksToCorrectCount([Range(1, 30)] int bitCount)
+        [TestCase(1, ExpectedResult = 7)]
+        [TestCase(0.1f, ExpectedResult = 10)]
+        [TestCase(0.01f, ExpectedResult = 14)]
+        public int BitCountIsLessForUnSigned(float precision)
         {
-            var packer = new FloatPacker(100, bitCount);
+            var packer = new FloatPacker(100, precision, false);
 
-            packer.Pack(this.writer, 1f);
-
-            Assert.That(this.writer.BitPosition, Is.EqualTo(bitCount));
+            packer.Pack(writer, 1f);
+            return writer.BitPosition;
         }
 
         [Test]
-        public void ThrowsIfBitCountIsLessThan1([Range(-10, 0)] int bitCount)
+        public void PackFromBitCountPacksToCorrectCount([Range(1, 30)] int bitCount, [Values(true, false)] bool signed)
         {
-            ArgumentException exception = Assert.Throws<ArgumentException>(() =>
+            var packer = new FloatPacker(100, bitCount, signed);
+
+            packer.Pack(writer, 1f);
+
+            Assert.That(writer.BitPosition, Is.EqualTo(bitCount));
+        }
+
+        [Test]
+        public void ThrowsIfBitCountIsLessThan1([Range(-10, 0)] int bitCount, [Values(true, false)] bool signed)
+        {
+            var exception = Assert.Throws<ArgumentException>(() =>
             {
-                _ = new FloatPacker(10, bitCount);
+                _ = new FloatPacker(10, bitCount, signed);
             });
 
             var expected = new ArgumentException("Bit count is too low, bit count should be between 1 and 30", "bitCount");
@@ -42,11 +55,11 @@ namespace JamesFrowen.BitPacking.Tests.Packers
         }
 
         [Test]
-        public void ThrowsIfBitCountIsGreaterThan30([Range(31, 40)] int bitCount)
+        public void ThrowsIfBitCountIsGreaterThan30([Range(31, 40)] int bitCount, [Values(true, false)] bool signed)
         {
-            ArgumentException exception = Assert.Throws<ArgumentException>(() =>
+            var exception = Assert.Throws<ArgumentException>(() =>
             {
-                _ = new FloatPacker(10, bitCount);
+                _ = new FloatPacker(10, bitCount, signed);
             });
 
             var expected = new ArgumentException("Bit count is too high, bit count should be between 1 and 30", "bitCount");
@@ -54,11 +67,11 @@ namespace JamesFrowen.BitPacking.Tests.Packers
         }
 
         [Test]
-        public void ThrowsIfMaxIsZero()
+        public void ThrowsIfMaxIsZero([Values(true, false)] bool signed)
         {
-            ArgumentException exception = Assert.Throws<ArgumentException>(() =>
+            var exception = Assert.Throws<ArgumentException>(() =>
             {
-                _ = new FloatPacker(0, 1);
+                _ = new FloatPacker(0, 1, signed);
             });
 
             var expected = new ArgumentException("Max can not be 0", "max");

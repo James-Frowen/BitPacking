@@ -24,7 +24,7 @@ SOFTWARE.
 
 using System.Runtime.CompilerServices;
 
-namespace JamesFrowen.BitPacking
+namespace Mirage.Serialization
 {
     public static class BitMask
     {

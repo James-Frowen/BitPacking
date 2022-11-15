@@ -26,7 +26,7 @@ using System;
 using System.Runtime.CompilerServices;
 using UnityEngine;
 
-namespace JamesFrowen.BitPacking
+namespace Mirage.Serialization
 {
     public sealed class QuaternionPacker
     {
@@ -35,15 +35,24 @@ namespace JamesFrowen.BitPacking
         /// <summary>Default packer using 10 bits per element, 32 bits total</summary>
         public static readonly QuaternionPacker Default10 = new QuaternionPacker(10);
 
+        public static uint PackAsInt(Quaternion value)
+        {
+            return (uint)Default10.Pack(value);
+        }
+        public static Quaternion UnpackFromInt(uint value)
+        {
+            return Default10.Unpack(value);
+        }
+
         /// <summary>
         /// 1 / sqrt(2)
         /// </summary>
-        const float MaxValue = 1f / 1.414214f;
+        private const float MAX_VALUE = 1f / 1.414214f;
 
         /// <summary>
         /// bit count per element writen
         /// </summary>
-        readonly int bitCountPerElement;
+        private readonly int _bitCountPerElement;
 
         /// <summary>
         /// total bit count for Quaternion
@@ -51,33 +60,37 @@ namespace JamesFrowen.BitPacking
         /// count = 3 * perElement + 2;
         /// </para>
         /// </summary>
-        readonly int totalBitCount;
-        readonly uint readMask;
-
-        readonly FloatPacker floatPacker;
+        private readonly int _totalBitCount;
+        private readonly uint _readMask;
+        private readonly FloatPacker _floatPacker;
 
         /// <param name="quaternionBitLength">10 per "smallest 3" is good enough for most people</param>
         public QuaternionPacker(int quaternionBitLength = 10)
         {
             // (this.BitLength - 1) because pack sign by itself
-            this.bitCountPerElement = quaternionBitLength;
-            this.totalBitCount = 2 + (quaternionBitLength * 3);
-            this.floatPacker = new FloatPacker(MaxValue, quaternionBitLength);
-            this.readMask = (uint)BitMask.Mask(this.bitCountPerElement);
+            _bitCountPerElement = quaternionBitLength;
+            _totalBitCount = 2 + (quaternionBitLength * 3);
+            _floatPacker = new FloatPacker(MAX_VALUE, quaternionBitLength);
+            _readMask = (uint)BitMask.Mask(_bitCountPerElement);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Pack(NetworkWriter writer, Quaternion _value)
+        public void Pack(NetworkWriter writer, Quaternion value)
         {
-            QuickNormalize(ref _value);
+            writer.Write(Pack(value), _totalBitCount);
+        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public ulong Pack(Quaternion value)
+        {
+            QuickNormalize(ref value);
 
-            FindLargestIndex(ref _value, out uint index);
+            FindLargestIndex(ref value, out var index);
 
-            GetSmallerDimensions(index, ref _value, out float a, out float b, out float c);
+            GetSmallerDimensions(index, ref value, out var a, out var b, out var c);
 
             // largest needs to be positive to be calculated by reader 
             // if largest is negative flip sign of others because Q = -Q
-            if (_value[(int)index] < 0)
+            if (value[(int)index] < 0)
             {
                 a = -a;
                 b = -b;
@@ -86,18 +99,19 @@ namespace JamesFrowen.BitPacking
 
             // todo, should we be rounding down for abc? because if they are rounded up their sum may be greater than largest
 
-            writer.Write(
-                 (ulong)index << this.bitCountPerElement * 3 |
-                 (ulong)this.floatPacker.PackNoClamp(a) << this.bitCountPerElement * 2 |
-                 (ulong)this.floatPacker.PackNoClamp(b) << this.bitCountPerElement |
-                 this.floatPacker.PackNoClamp(c),
-                 this.totalBitCount);
+            ulong combine = 0;
+            // write Index as (3-i) so that Quaternion.identity will be all zeros
+            combine |= (ulong)(3 - index) << (_bitCountPerElement * 3);
+            combine |= (ulong)_floatPacker.PackNoClamp(a) << (_bitCountPerElement * 2);
+            combine |= (ulong)_floatPacker.PackNoClamp(b) << _bitCountPerElement;
+            combine |= _floatPacker.PackNoClamp(c);
+            return combine;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static void QuickNormalize(ref Quaternion quaternion)
         {
-            float dot =
+            var dot =
                 (quaternion.x * quaternion.x) +
                 (quaternion.y * quaternion.y) +
                 (quaternion.z * quaternion.z) +
@@ -109,7 +123,7 @@ namespace JamesFrowen.BitPacking
             // only normalize if dot product is outside allowed range
             if (minAllowed > dot || maxAllowed < dot)
             {
-                float dotSqrt = (float)Math.Sqrt(dot);
+                var dotSqrt = (float)Math.Sqrt(dot);
                 // rotation is 0
                 if (dotSqrt < allowedEpsilon)
                 {
@@ -121,7 +135,7 @@ namespace JamesFrowen.BitPacking
                 }
                 else
                 {
-                    float iDotSqrt = 1 / dotSqrt;
+                    var iDotSqrt = 1 / dotSqrt;
                     quaternion.x *= iDotSqrt;
                     quaternion.y *= iDotSqrt;
                     quaternion.z *= iDotSqrt;
@@ -133,13 +147,13 @@ namespace JamesFrowen.BitPacking
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static void FindLargestIndex(ref Quaternion quaternion, out uint index)
         {
-            float x2 = quaternion.x * quaternion.x;
-            float y2 = quaternion.y * quaternion.y;
-            float z2 = quaternion.z * quaternion.z;
-            float w2 = quaternion.w * quaternion.w;
+            var x2 = quaternion.x * quaternion.x;
+            var y2 = quaternion.y * quaternion.y;
+            var z2 = quaternion.z * quaternion.z;
+            var w2 = quaternion.w * quaternion.w;
 
             index = 0;
-            float current = x2;
+            var current = x2;
             // check vs sq to avoid doing mathf.abs
             if (y2 > current)
             {
@@ -158,7 +172,7 @@ namespace JamesFrowen.BitPacking
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        static void GetSmallerDimensions(uint largestIndex, ref Quaternion quaternion, out float a, out float b, out float c)
+        private static void GetSmallerDimensions(uint largestIndex, ref Quaternion quaternion, out float a, out float b, out float c)
         {
             switch (largestIndex)
             {
@@ -188,22 +202,28 @@ namespace JamesFrowen.BitPacking
                     return;
             }
         }
-        static void ThrowIfOutOfRange() => throw new IndexOutOfRangeException("Invalid Quaternion index!");
+
+        private static void ThrowIfOutOfRange() => throw new IndexOutOfRangeException("Invalid Quaternion index!");
 
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Quaternion Unpack(NetworkReader reader)
         {
-            ulong combine = reader.Read(this.totalBitCount);
+            return Unpack(reader.Read(_totalBitCount));
+        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Quaternion Unpack(ulong combine)
+        {
+            // Index writen as (3-i)
+            // so (3-c) to decode
+            var index = 3 - (uint)(combine >> (_bitCountPerElement * 3));
 
-            uint index = (uint)(combine >> this.bitCountPerElement * 3);
+            var a = _floatPacker.Unpack((uint)(combine >> (_bitCountPerElement * 2)) & _readMask);
+            var b = _floatPacker.Unpack((uint)(combine >> (_bitCountPerElement * 1)) & _readMask);
+            var c = _floatPacker.Unpack((uint)combine & _readMask);
 
-            float a = this.floatPacker.Unpack((uint)(combine >> this.bitCountPerElement * 2) & this.readMask);
-            float b = this.floatPacker.Unpack((uint)(combine >> this.bitCountPerElement * 1) & this.readMask);
-            float c = this.floatPacker.Unpack((uint)combine & this.readMask);
-
-            float l2 = 1 - ((a * a) + (b * b) + (c * c));
-            float largest = (float)Math.Sqrt(l2);
+            var l2 = 1 - ((a * a) + (b * b) + (c * c));
+            var largest = (float)Math.Sqrt(l2);
             // this Quaternion should already be normallized because of the way that largest is calculated
             switch (index)
             {

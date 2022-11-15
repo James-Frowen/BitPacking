@@ -26,36 +26,27 @@ using UnityEngine;
 
 namespace Mirage.Serialization
 {
-    public sealed class Vector3Packer
+    /// <summary>
+    /// Packs a vector3 using <see cref="ZigZag"/> and <see cref="VarIntBlocksPacker"/>
+    /// </summary>
+    public sealed class VarVector3Packer
     {
-        private readonly FloatPacker _xPacker;
-        private readonly FloatPacker _yPacker;
-        private readonly FloatPacker _zPacker;
+        private readonly VarFloatPacker _xPacker;
+        private readonly VarFloatPacker _yPacker;
+        private readonly VarFloatPacker _zPacker;
 
-        public Vector3Packer(float xMax, float yMax, float zMax, int xBitCount, int yBitCount, int zBitCount)
+        public VarVector3Packer(Vector3 precision, int blocksize)
         {
-            _xPacker = new FloatPacker(xMax, xBitCount);
-            _yPacker = new FloatPacker(yMax, yBitCount);
-            _zPacker = new FloatPacker(zMax, zBitCount);
-        }
-        public Vector3Packer(float xMax, float yMax, float zMax, float xPrecision, float yPrecision, float zPrecision)
-        {
-            _xPacker = new FloatPacker(xMax, xPrecision);
-            _yPacker = new FloatPacker(yMax, yPrecision);
-            _zPacker = new FloatPacker(zMax, zPrecision);
-        }
-        public Vector3Packer(Vector3 max, Vector3 precision)
-        {
-            _xPacker = new FloatPacker(max.x, precision.x);
-            _yPacker = new FloatPacker(max.y, precision.y);
-            _zPacker = new FloatPacker(max.z, precision.z);
+            _xPacker = new VarFloatPacker(precision.x, blocksize);
+            _yPacker = new VarFloatPacker(precision.y, blocksize);
+            _zPacker = new VarFloatPacker(precision.z, blocksize);
         }
 
-        public void Pack(NetworkWriter writer, Vector3 value)
+        public void Pack(NetworkWriter writer, Vector3 position)
         {
-            _xPacker.Pack(writer, value.x);
-            _yPacker.Pack(writer, value.y);
-            _zPacker.Pack(writer, value.z);
+            _xPacker.Pack(writer, position.x);
+            _yPacker.Pack(writer, position.y);
+            _zPacker.Pack(writer, position.z);
         }
 
         public Vector3 Unpack(NetworkReader reader)

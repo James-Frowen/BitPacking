@@ -26,39 +26,34 @@ using UnityEngine;
 
 namespace Mirage.Serialization
 {
-    public sealed class Vector2Packer
+    /// <summary>
+    /// Packs a float using <see cref="ZigZag"/> and <see cref="VarIntBlocksPacker"/>
+    /// </summary>
+    public sealed class VarFloatPacker
     {
-        private readonly FloatPacker _xPacker;
-        private readonly FloatPacker _yPacker;
+        private readonly int _blockSize;
+        private readonly float _precision;
+        private readonly float _inversePrecision;
 
-        public Vector2Packer(float xMax, float yMax, int xBitCount, int yBitCount)
+        public VarFloatPacker(float precision, int blockSize)
         {
-            _xPacker = new FloatPacker(xMax, xBitCount);
-            _yPacker = new FloatPacker(yMax, yBitCount);
-        }
-        public Vector2Packer(float xMax, float yMax, float xPrecision, float yPrecision)
-        {
-            _xPacker = new FloatPacker(xMax, xPrecision);
-            _yPacker = new FloatPacker(yMax, yPrecision);
-        }
-        public Vector2Packer(Vector2 max, Vector2 precision)
-        {
-            _xPacker = new FloatPacker(max.x, precision.x);
-            _yPacker = new FloatPacker(max.y, precision.y);
+            _precision = precision;
+            _blockSize = blockSize;
+            _inversePrecision = 1 / precision;
         }
 
-        public void Pack(NetworkWriter writer, Vector2 value)
+        public void Pack(NetworkWriter writer, float value)
         {
-            _xPacker.Pack(writer, value.x);
-            _yPacker.Pack(writer, value.y);
+            var scaled = Mathf.RoundToInt(value * _inversePrecision);
+            var zig = ZigZag.Encode(scaled);
+            VarIntBlocksPacker.Pack(writer, zig, _blockSize);
         }
 
-        public Vector2 Unpack(NetworkReader reader)
+        public float Unpack(NetworkReader reader)
         {
-            Vector2 value = default;
-            value.x = _xPacker.Unpack(reader);
-            value.y = _yPacker.Unpack(reader);
-            return value;
+            var zig = (uint)VarIntBlocksPacker.Unpack(reader, _blockSize);
+            var scaled = ZigZag.Decode(zig);
+            return scaled * _precision;
         }
     }
 }

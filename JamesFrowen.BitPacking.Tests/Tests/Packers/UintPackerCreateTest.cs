@@ -1,7 +1,8 @@
-using NUnit.Framework;
 using System;
+using Mirage.Serialization;
+using NUnit.Framework;
 
-namespace JamesFrowen.BitPacking.Tests.Packers
+namespace Mirage.Tests.Runtime.Serialization.Packers
 {
     public class UintPackerCreateTest : PackerTestBase
     {
@@ -15,9 +16,9 @@ namespace JamesFrowen.BitPacking.Tests.Packers
         [TestCase(5_000_000ul, 500ul, 100000ul, ExpectedResult = 64 + 2)]
         public int CreatesUsing2Values(ulong inValue, ulong smallValue, ulong mediumValue)
         {
-            var packer = new VariableIntPacker(smallValue, mediumValue);
-            packer.PackUlong(this.writer, inValue);
-            return this.writer.BitPosition;
+            var packer = new VarIntPacker(smallValue, mediumValue);
+            packer.PackUlong(writer, inValue);
+            return writer.BitPosition;
         }
 
 
@@ -32,18 +33,18 @@ namespace JamesFrowen.BitPacking.Tests.Packers
         [TestCase(5_000_000ul, 500ul, 100_000ul, 50_000_000ul, ExpectedResult = 26 + 2)]
         public int CreatesUsing3Values(ulong inValue, ulong smallValue, ulong mediumValue, ulong largeValue)
         {
-            var packer = new VariableIntPacker(smallValue, mediumValue, largeValue);
-            packer.PackUlong(this.writer, inValue);
-            return this.writer.BitPosition;
+            var packer = new VarIntPacker(smallValue, mediumValue, largeValue);
+            packer.PackUlong(writer, inValue);
+            return writer.BitPosition;
         }
 
 
         [Test]
         public void ThrowsIfSmallBitIsZero()
         {
-            ArgumentException exception = Assert.Throws<ArgumentException>(() =>
+            var exception = Assert.Throws<ArgumentException>(() =>
             {
-                _ = VariableIntPacker.FromBitCount(0, 10);
+                _ = VarIntPacker.FromBitCount(0, 10);
             });
             var expected = new ArgumentException("Small value can not be zero", "smallBits");
             Assert.That(exception, Has.Message.EqualTo(expected.Message));
@@ -51,9 +52,9 @@ namespace JamesFrowen.BitPacking.Tests.Packers
         [Test]
         public void ThrowsIfMediumLessThanSmall()
         {
-            ArgumentException exception = Assert.Throws<ArgumentException>(() =>
+            var exception = Assert.Throws<ArgumentException>(() =>
             {
-                _ = VariableIntPacker.FromBitCount(6, 5);
+                _ = VarIntPacker.FromBitCount(6, 5);
             });
             var expected = new ArgumentException("Medium value must be greater than small value", "mediumBits");
             Assert.That(exception, Has.Message.EqualTo(expected.Message));
@@ -61,9 +62,9 @@ namespace JamesFrowen.BitPacking.Tests.Packers
         [Test]
         public void ThrowsIfLargeLessThanMedium()
         {
-            ArgumentException exception = Assert.Throws<ArgumentException>(() =>
+            var exception = Assert.Throws<ArgumentException>(() =>
             {
-                _ = VariableIntPacker.FromBitCount(4, 10, 8);
+                _ = VarIntPacker.FromBitCount(4, 10, 8);
             });
             var expected = new ArgumentException("Large value must be greater than medium value", "largeBits");
             Assert.That(exception, Has.Message.EqualTo(expected.Message));
@@ -71,9 +72,9 @@ namespace JamesFrowen.BitPacking.Tests.Packers
         [Test]
         public void ThrowsIfLargeIsOver64()
         {
-            ArgumentException exception = Assert.Throws<ArgumentException>(() =>
+            var exception = Assert.Throws<ArgumentException>(() =>
             {
-                _ = VariableIntPacker.FromBitCount(5, 10, 65);
+                _ = VarIntPacker.FromBitCount(5, 10, 65);
             });
             var expected = new ArgumentException("Large bits must be 64 or less", "largeBits");
             Assert.That(exception, Has.Message.EqualTo(expected.Message));
@@ -81,9 +82,9 @@ namespace JamesFrowen.BitPacking.Tests.Packers
         [Test]
         public void ThrowsIfMediumIsOver62()
         {
-            ArgumentException exception = Assert.Throws<ArgumentException>(() =>
+            var exception = Assert.Throws<ArgumentException>(() =>
             {
-                _ = VariableIntPacker.FromBitCount(5, 63);
+                _ = VarIntPacker.FromBitCount(5, 63);
             });
             var expected = new ArgumentException("Medium bits must be 62 or less", "mediumBits");
             Assert.That(exception, Has.Message.EqualTo(expected.Message));
@@ -92,18 +93,18 @@ namespace JamesFrowen.BitPacking.Tests.Packers
         [Test]
         public void ThrowsWhenValueIsOverLargeValue()
         {
-            var packer = VariableIntPacker.FromBitCount(1, 2, 3, true);
-            ArgumentOutOfRangeException exception1 = Assert.Throws<ArgumentOutOfRangeException>(() =>
+            var packer = VarIntPacker.FromBitCount(1, 2, 3, true);
+            var exception1 = Assert.Throws<ArgumentOutOfRangeException>(() =>
             {
-                packer.PackUlong(this.writer, 20);
+                packer.PackUlong(writer, 20);
             });
-            ArgumentOutOfRangeException exception2 = Assert.Throws<ArgumentOutOfRangeException>(() =>
+            var exception2 = Assert.Throws<ArgumentOutOfRangeException>(() =>
             {
-                packer.PackUint(this.writer, 20);
+                packer.PackUint(writer, 20);
             });
-            ArgumentOutOfRangeException exception3 = Assert.Throws<ArgumentOutOfRangeException>(() =>
+            var exception3 = Assert.Throws<ArgumentOutOfRangeException>(() =>
             {
-                packer.PackUlong(this.writer, 20);
+                packer.PackUlong(writer, 20);
             });
             var expected = new ArgumentOutOfRangeException("value", 20, $"Value is over max of {7}");
             Assert.That(exception1, Has.Message.EqualTo(expected.Message));
@@ -117,18 +118,18 @@ namespace JamesFrowen.BitPacking.Tests.Packers
         [TestCase(50_000ul, 10)]
         public void WritesMaxIfOverLargeValue(ulong inValue, int largeBits)
         {
-            ulong max = BitMask.Mask(largeBits);
-            var packer = VariableIntPacker.FromBitCount(1, 2, largeBits, false);
+            var max = BitMask.Mask(largeBits);
+            var packer = VarIntPacker.FromBitCount(1, 2, largeBits, false);
             Assert.DoesNotThrow(() =>
             {
-                packer.PackUlong(this.writer, inValue);
-                packer.PackUint(this.writer, (uint)inValue);
-                packer.PackUlong(this.writer, (ushort)inValue);
+                packer.PackUlong(writer, inValue);
+                packer.PackUint(writer, (uint)inValue);
+                packer.PackUlong(writer, (ushort)inValue);
             });
-            NetworkReader reader = this.GetReader();
-            ulong unpack1 = packer.UnpackUlong(reader);
-            uint unpack2 = packer.UnpackUint(reader);
-            ushort unpack3 = packer.UnpackUshort(reader);
+            var reader = GetReader();
+            var unpack1 = packer.UnpackUlong(reader);
+            var unpack2 = packer.UnpackUint(reader);
+            var unpack3 = packer.UnpackUshort(reader);
 
             Assert.That(unpack1, Is.EqualTo(max));
             Assert.That(unpack2, Is.EqualTo(max));

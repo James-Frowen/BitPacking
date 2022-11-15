@@ -1,30 +1,40 @@
+using Mirage.Serialization;
 using NUnit.Framework;
 using Random = JamesFrowen.BitPacking.Tests.TestRandom;
 
-namespace JamesFrowen.BitPacking.Tests.Packers
+namespace Mirage.Tests.Runtime.Serialization.Packers
 {
-    [TestFixture(100, 0.1f)]
-    [TestFixture(500, 0.02f)]
-    [TestFixture(2000, 0.05f)]
-    [TestFixture(1.5f, 0.01f)]
-    [TestFixture(100_000, 30)]
+    [TestFixture(100, 0.1f, true)]
+    [TestFixture(500, 0.02f, true)]
+    [TestFixture(2000, 0.05f, true)]
+    [TestFixture(1.5f, 0.01f, true)]
+    [TestFixture(100_000, 30, true)]
+
+    [TestFixture(100, 0.1f, false)]
+    [TestFixture(500, 0.02f, false)]
+    [TestFixture(2000, 0.05f, false)]
+    [TestFixture(1.5f, 0.01f, false)]
+    [TestFixture(100_000, 30, false)]
     public class FloatPackerTests : PackerTestBase
     {
-        readonly FloatPacker packer;
-        readonly float max;
-        readonly float precsion;
+        private readonly FloatPacker packer;
+        private readonly float max;
+        private readonly float min;
+        private readonly float precsion;
+        private readonly bool signed;
 
-        public FloatPackerTests(float max, float precsion)
+        public FloatPackerTests(float max, float precsion, bool signed)
         {
             this.max = max;
+            min = signed ? -max : 0;
             this.precsion = precsion;
-            this.packer = new FloatPacker(max, precsion);
+            this.signed = signed;
+            packer = new FloatPacker(max, precsion, signed);
         }
 
-
-        float GetRandomFloat()
+        private float GetRandomFloat()
         {
-            return Random.Range(-this.max, this.max);
+            return Random.Range(min, max);
         }
 
 
@@ -33,39 +43,39 @@ namespace JamesFrowen.BitPacking.Tests.Packers
         [Repeat(1000)]
         public void UnpackedValueIsWithinPrecision()
         {
-            float start = this.GetRandomFloat();
-            uint packed = this.packer.Pack(start);
-            float unpacked = this.packer.Unpack(packed);
+            var start = GetRandomFloat();
+            var packed = packer.Pack(start);
+            var unpacked = packer.Unpack(packed);
 
-            Assert.That(unpacked, Is.EqualTo(start).Within(this.precsion));
+            Assert.That(unpacked, Is.EqualTo(start).Within(precsion));
         }
 
         [Test]
         public void ValueOverMaxWillBeUnpackedAsMax()
         {
-            float start = this.max * 1.2f;
-            uint packed = this.packer.Pack(start);
-            float unpacked = this.packer.Unpack(packed);
+            var start = max * 1.2f;
+            var packed = packer.Pack(start);
+            var unpacked = packer.Unpack(packed);
 
-            Assert.That(unpacked, Is.EqualTo(this.max).Within(this.precsion));
+            Assert.That(unpacked, Is.EqualTo(max).Within(precsion));
         }
 
         [Test]
         public void ValueUnderNegativeMaxWillBeUnpackedAsNegativeMax()
         {
-            float start = this.max * -1.2f;
-            uint packed = this.packer.Pack(start);
-            float unpacked = this.packer.Unpack(packed);
+            var start = max * -1.2f;
+            var packed = packer.Pack(start);
+            var unpacked = packer.Unpack(packed);
 
-            Assert.That(unpacked, Is.EqualTo(-this.max).Within(this.precsion));
+            Assert.That(unpacked, Is.EqualTo(min).Within(precsion));
         }
 
         [Test]
         public void ZeroUnpackToExactlyZero()
         {
             const float zero = 0;
-            uint packed = this.packer.Pack(zero);
-            float unpacked = this.packer.Unpack(packed);
+            var packed = packer.Pack(zero);
+            var unpacked = packer.Unpack(packed);
 
             Assert.That(unpacked, Is.EqualTo(zero));
         }
@@ -75,31 +85,31 @@ namespace JamesFrowen.BitPacking.Tests.Packers
         [Repeat(100)]
         public void UnpackedValueIsWithinPrecisionUsingWriter()
         {
-            float start = this.GetRandomFloat();
-            this.packer.Pack(this.writer, start);
-            float unpacked = this.packer.Unpack(this.GetReader());
+            var start = GetRandomFloat();
+            packer.Pack(writer, start);
+            var unpacked = packer.Unpack(GetReader());
 
-            Assert.That(unpacked, Is.EqualTo(start).Within(this.precsion));
+            Assert.That(unpacked, Is.EqualTo(start).Within(precsion));
         }
 
         [Test]
         public void ValueOverMaxWillBeUnpackedUsingWriterAsMax()
         {
-            float start = this.max * 1.2f;
-            this.packer.Pack(this.writer, start);
-            float unpacked = this.packer.Unpack(this.GetReader());
+            var start = max * 1.2f;
+            packer.Pack(writer, start);
+            var unpacked = packer.Unpack(GetReader());
 
-            Assert.That(unpacked, Is.EqualTo(this.max).Within(this.precsion));
+            Assert.That(unpacked, Is.EqualTo(max).Within(precsion));
         }
 
         [Test]
         public void ValueUnderNegativeMaxWillBeUnpackedUsingWriterAsNegativeMax()
         {
-            float start = this.max * -1.2f;
-            this.packer.Pack(this.writer, start);
-            float unpacked = this.packer.Unpack(this.GetReader());
+            var start = max * -1.2f;
+            packer.Pack(writer, start);
+            var unpacked = packer.Unpack(GetReader());
 
-            Assert.That(unpacked, Is.EqualTo(-this.max).Within(this.precsion));
+            Assert.That(unpacked, Is.EqualTo(min).Within(precsion));
         }
 
 
@@ -107,22 +117,22 @@ namespace JamesFrowen.BitPacking.Tests.Packers
         [Repeat(100)]
         public void UnpackedValueIsWithinPrecisionNoClamp()
         {
-            float start = this.GetRandomFloat();
-            uint packed = this.packer.PackNoClamp(start);
-            float unpacked = this.packer.Unpack(packed);
+            var start = GetRandomFloat();
+            var packed = packer.PackNoClamp(start);
+            var unpacked = packer.Unpack(packed);
 
-            Assert.That(unpacked, Is.EqualTo(start).Within(this.precsion));
+            Assert.That(unpacked, Is.EqualTo(start).Within(precsion));
         }
 
         [Test]
         [Repeat(100)]
         public void UnpackedValueIsWithinPrecisionNoClampUsingWriter()
         {
-            float start = this.GetRandomFloat();
-            this.packer.PackNoClamp(this.writer, start);
-            float unpacked = this.packer.Unpack(this.GetReader());
+            var start = GetRandomFloat();
+            packer.PackNoClamp(writer, start);
+            var unpacked = packer.Unpack(GetReader());
 
-            Assert.That(unpacked, Is.EqualTo(start).Within(this.precsion));
+            Assert.That(unpacked, Is.EqualTo(start).Within(precsion));
         }
     }
 }

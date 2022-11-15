@@ -1,15 +1,16 @@
-using NUnit.Framework;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using Mirage.Serialization;
+using NUnit.Framework;
 using UnityEngine;
 using Random = JamesFrowen.BitPacking.Tests.TestRandom;
 
-namespace JamesFrowen.BitPacking.Tests.Packers
+namespace Mirage.Tests.Runtime.Serialization.Packers
 {
     public class Vector3PackerTests : PackerTestBase
     {
-        static IEnumerable WriteCorrectNumberOfBitsCases()
+        private static IEnumerable WriteCorrectNumberOfBitsCases()
         {
             yield return new TestCaseData(Vector3.one * 100, Vector3.one * 0.1f).Returns(11 * 3);
             yield return new TestCaseData(Vector3.one * 200, Vector3.one * 0.1f).Returns(12 * 3);
@@ -25,11 +26,11 @@ namespace JamesFrowen.BitPacking.Tests.Packers
         public int WriteCorrectNumberOfBits(Vector3 max, Vector3 precision)
         {
             var packer = new Vector3Packer(max, precision);
-            packer.Pack(this.writer, Vector3.zero);
-            return this.writer.BitPosition;
+            packer.Pack(writer, Vector3.zero);
+            return writer.BitPosition;
         }
 
-        static IEnumerable ThrowsIfAnyMaxIsZeroCases()
+        private static IEnumerable ThrowsIfAnyMaxIsZeroCases()
         {
             yield return new TestCaseData(new Vector3(100, 0, 100), Vector3.one * 0.1f);
             yield return new TestCaseData(new Vector3(0, 100, 100), Vector3.one * 0.1f);
@@ -40,7 +41,7 @@ namespace JamesFrowen.BitPacking.Tests.Packers
         [TestCaseSource(nameof(ThrowsIfAnyMaxIsZeroCases))]
         public void ThrowsIfAnyMaxIsZero(Vector3 max, Vector3 precision)
         {
-            ArgumentException exception = Assert.Throws<ArgumentException>(() =>
+            var exception = Assert.Throws<ArgumentException>(() =>
             {
                 _ = new Vector3Packer(max, precision);
             });
@@ -49,8 +50,7 @@ namespace JamesFrowen.BitPacking.Tests.Packers
             Assert.That(exception, Has.Message.EqualTo(expected.Message));
         }
 
-
-        static IEnumerable<TestCaseData> UnpacksToSaveValueCases()
+        private static IEnumerable<TestCaseData> UnpacksToSaveValueCases()
         {
             yield return new TestCaseData(Vector3.one * 100, Vector3.one * 0.1f);
             yield return new TestCaseData(Vector3.one * 200, Vector3.one * 0.1f);
@@ -71,8 +71,8 @@ namespace JamesFrowen.BitPacking.Tests.Packers
                 Random.Range(-max.z, -max.z)
                 );
 
-            packer.Pack(this.writer, expected);
-            Vector3 unpacked = packer.Unpack(this.GetReader());
+            packer.Pack(writer, expected);
+            var unpacked = packer.Unpack(GetReader());
 
             Assert.That(unpacked.x, Is.EqualTo(expected.x).Within(precision.x));
             Assert.That(unpacked.y, Is.EqualTo(expected.y).Within(precision.y));
@@ -84,10 +84,10 @@ namespace JamesFrowen.BitPacking.Tests.Packers
         public void ZeroUnpacksAsZero(Vector3 max, Vector3 precision)
         {
             var packer = new Vector3Packer(max, precision);
-            Vector3 zero = Vector3.zero;
+            var zero = Vector3.zero;
 
-            packer.Pack(this.writer, zero);
-            Vector3 unpacked = packer.Unpack(this.GetReader());
+            packer.Pack(writer, zero);
+            var unpacked = packer.Unpack(GetReader());
 
             Assert.That(unpacked, Is.EqualTo(zero));
         }

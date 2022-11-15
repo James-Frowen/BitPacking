@@ -1,6 +1,7 @@
+using Mirage.Serialization;
 using NUnit.Framework;
 
-namespace JamesFrowen.BitPacking.Tests
+namespace Mirage.Tests.Runtime.Serialization
 {
     public class BitPackingResizeTest
     {
@@ -10,73 +11,64 @@ namespace JamesFrowen.BitPacking.Tests
         [SetUp]
         public void SetUp()
         {
-            this.writer = new NetworkWriter(1300, true);
-            this.reader = new NetworkReader();
+            writer = new NetworkWriter(1300, true);
+            reader = new NetworkReader();
         }
 
         [TearDown]
         public void TearDown()
         {
             // we have to clear these each time so that capactity doesn't effect other tests
-            this.writer.Reset();
-            this.writer = null;
-            this.reader.Dispose();
-            this.reader = null;
+            writer.Reset();
+            writer = null;
+            reader.Dispose();
+            reader = null;
         }
 
         [Test]
-#if !UNITY_EDITOR
-        [Ignore("Debug.LogWarning Requires unity engine to run")]
-#endif
         public void ResizesIfWritingOverCapacity()
         {
-            int overCapacity = (1300 / 8) + 10;
-            Assert.That(this.writer.ByteCapacity, Is.EqualTo(1304), "is first multiple of 8 over 1300");
-            for (int i = 0; i < overCapacity; i++)
+            var overCapacity = (1300 / 8) + 10;
+            Assert.That(writer.ByteCapacity, Is.EqualTo(1304), "is first multiple of 8 over 1300");
+            for (var i = 0; i < overCapacity; i++)
             {
-                this.writer.WriteUInt64((ulong)i);
+                writer.WriteUInt64((ulong)i);
             }
 
-            Assert.That(this.writer.ByteCapacity, Is.EqualTo(1304 * 2), "should double in size");
+            Assert.That(writer.ByteCapacity, Is.EqualTo(1304 * 2), "should double in size");
         }
 
 
         [Test]
-#if !UNITY_EDITOR
-        [Ignore("Debug.LogWarning Requires unity engine to run")]
-#endif
         public void WillResizeMultipleTimes()
         {
-            int overCapacity = ((1300 / 8) + 10) * 10; // 1720 * 8 = 13760 bytes
+            var overCapacity = ((1300 / 8) + 10) * 10; // 1720 * 8 = 13760 bytes
 
-            Assert.That(this.writer.ByteCapacity, Is.EqualTo(1304), "is first multiple of 8 over 1300");
-            for (int i = 0; i < overCapacity; i++)
+            Assert.That(writer.ByteCapacity, Is.EqualTo(1304), "is first multiple of 8 over 1300");
+            for (var i = 0; i < overCapacity; i++)
             {
-                this.writer.WriteUInt64((ulong)i);
+                writer.WriteUInt64((ulong)i);
             }
 
 
-            Assert.That(this.writer.ByteCapacity, Is.EqualTo(20_864), "should double each time it goes over capacity");
+            Assert.That(writer.ByteCapacity, Is.EqualTo(20_864), "should double each time it goes over capacity");
         }
 
         [Test]
-#if !UNITY_EDITOR
-        [Ignore("Debug.LogWarning Requires unity engine to run")]
-#endif
         public void ResizedArrayContainsAllData()
         {
-            int overCapacity = (1300 / 8) + 10;
-            for (int i = 0; i < overCapacity; i++)
+            var overCapacity = (1300 / 8) + 10;
+            for (var i = 0; i < overCapacity; i++)
             {
-                this.writer.WriteUInt64((ulong)i);
+                writer.WriteUInt64((ulong)i);
             }
 
 
-            var segment = this.writer.ToArraySegment();
-            this.reader.Reset(segment);
-            for (int i = 0; i < overCapacity; i++)
+            var segment = writer.ToArraySegment();
+            reader.Reset(segment);
+            for (var i = 0; i < overCapacity; i++)
             {
-                Assert.That(this.reader.ReadUInt64(), Is.EqualTo((ulong)i));
+                Assert.That(reader.ReadUInt64(), Is.EqualTo((ulong)i));
             }
         }
     }
@@ -88,15 +80,15 @@ namespace JamesFrowen.BitPacking.Tests
         [OneTimeSetUp]
         public void OneTimeSetUp()
         {
-            this.writer = new NetworkWriter(1300);
-            this.reader = new NetworkReader();
+            writer = new NetworkWriter(1300);
+            reader = new NetworkReader();
         }
 
         [TearDown]
         public void TearDown()
         {
-            this.writer.Reset();
-            this.reader.Dispose();
+            writer.Reset();
+            reader.Dispose();
         }
 
 
@@ -107,19 +99,19 @@ namespace JamesFrowen.BitPacking.Tests
             ushort value2 = 0x1000;
 
             // write first value
-            this.writer.WriteUInt16(value1);
+            writer.WriteUInt16(value1);
 
-            this.reader.Reset(this.writer.ToArray());
-            ushort out1 = this.reader.ReadUInt16();
+            reader.Reset(writer.ToArray());
+            var out1 = reader.ReadUInt16();
             Assert.That(out1, Is.EqualTo(value1));
 
             // reset and write 2nd value
-            this.writer.Reset();
+            writer.Reset();
 
-            this.writer.WriteUInt16(value2);
+            writer.WriteUInt16(value2);
 
-            this.reader.Reset(this.writer.ToArray());
-            ushort out2 = this.reader.ReadUInt16();
+            reader.Reset(writer.ToArray());
+            var out2 = reader.ReadUInt16();
             Assert.That(out2, Is.EqualTo(value2), "Value 2 was incorrect");
         }
 
@@ -129,19 +121,19 @@ namespace JamesFrowen.BitPacking.Tests
         public void WriteULongAfterReset(ulong value1, ulong value2)
         {
             // write first value
-            this.writer.WriteUInt64(value1);
+            writer.WriteUInt64(value1);
 
-            this.reader.Reset(this.writer.ToArray());
-            ulong out1 = this.reader.ReadUInt64();
+            reader.Reset(writer.ToArray());
+            var out1 = reader.ReadUInt64();
             Assert.That(out1, Is.EqualTo(value1));
 
             // reset and write 2nd value
-            this.writer.Reset();
+            writer.Reset();
 
-            this.writer.WriteUInt64(value2);
+            writer.WriteUInt64(value2);
 
-            this.reader.Reset(this.writer.ToArray());
-            ulong out2 = this.reader.ReadUInt64();
+            reader.Reset(writer.ToArray());
+            var out2 = reader.ReadUInt64();
             Assert.That(out2, Is.EqualTo(value2), "Value 2 was incorrect");
         }
 
@@ -151,19 +143,19 @@ namespace JamesFrowen.BitPacking.Tests
         public void WriteULongWriteBitsAfterReset(ulong value1, ulong value2)
         {
             // write first value
-            this.writer.Write(value1, 64);
+            writer.Write(value1, 64);
 
-            this.reader.Reset(this.writer.ToArray());
-            ulong out1 = this.reader.Read(64);
+            reader.Reset(writer.ToArray());
+            var out1 = reader.Read(64);
             Assert.That(out1, Is.EqualTo(value1));
 
             // reset and write 2nd value
-            this.writer.Reset();
+            writer.Reset();
 
-            this.writer.Write(value2, 64);
+            writer.Write(value2, 64);
 
-            this.reader.Reset(this.writer.ToArray());
-            ulong out2 = this.reader.Read(64);
+            reader.Reset(writer.ToArray());
+            var out2 = reader.Read(64);
             Assert.That(out2, Is.EqualTo(value2), "Value 2 was incorrect");
         }
     }

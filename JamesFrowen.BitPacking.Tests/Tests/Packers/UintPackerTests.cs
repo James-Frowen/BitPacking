@@ -1,8 +1,9 @@
-using NUnit.Framework;
 using System;
+using Mirage.Serialization;
+using NUnit.Framework;
 using Random = System.Random;
 
-namespace JamesFrowen.BitPacking.Tests.Packers
+namespace Mirage.Tests.Runtime.Serialization.Packers
 {
     [TestFixture(50ul, 1_000ul, null)]
     [TestFixture(250ul, 10_000ul, null)]
@@ -12,47 +13,46 @@ namespace JamesFrowen.BitPacking.Tests.Packers
     [TestFixture(500ul, 100_000ul, 10_000_000ul)]
     public class UintPackerTests : PackerTestBase
     {
-        readonly Random random = new Random();
-        readonly VariableIntPacker packer;
-        readonly ulong max;
+        private readonly Random random = new Random();
+        private readonly VarIntPacker packer;
+        private readonly ulong max;
 
         public UintPackerTests(ulong smallValue, ulong mediumValue, ulong? largeValue)
         {
             if (largeValue.HasValue)
             {
-                this.packer = new VariableIntPacker(smallValue, mediumValue, largeValue.Value, false);
-                this.max = largeValue.Value;
+                packer = new VarIntPacker(smallValue, mediumValue, largeValue.Value, false);
+                max = largeValue.Value;
             }
             else
             {
-                this.packer = new VariableIntPacker(smallValue, mediumValue);
-                this.max = ulong.MaxValue;
+                packer = new VarIntPacker(smallValue, mediumValue);
+                max = ulong.MaxValue;
             }
         }
 
-
-        ulong GetRandonUlongBias()
+        private ulong GetRandonUlongBias()
         {
-            return (ulong)(Math.Abs(this.random.NextDouble() - this.random.NextDouble()) * this.max);
+            return (ulong)(Math.Abs(random.NextDouble() - random.NextDouble()) * max);
         }
 
-        uint GetRandonUintBias()
+        private uint GetRandonUintBias()
         {
-            return (uint)(Math.Abs(this.random.NextDouble() - this.random.NextDouble()) * Math.Min(this.max, uint.MaxValue));
+            return (uint)(Math.Abs(random.NextDouble() - random.NextDouble()) * Math.Min(max, uint.MaxValue));
         }
 
-        ushort GetRandonUshortBias()
+        private ushort GetRandonUshortBias()
         {
-            return (ushort)(Math.Abs(this.random.NextDouble() - this.random.NextDouble()) * Math.Min(this.max, ushort.MaxValue));
+            return (ushort)(Math.Abs(random.NextDouble() - random.NextDouble()) * Math.Min(max, ushort.MaxValue));
         }
 
         [Test]
         [Repeat(1000)]
         public void UnpacksCorrectUlongValue()
         {
-            ulong start = this.GetRandonUlongBias();
-            this.packer.PackUlong(this.writer, start);
-            ulong unpacked = this.packer.UnpackUlong(this.GetReader());
+            var start = GetRandonUlongBias();
+            packer.PackUlong(writer, start);
+            var unpacked = packer.UnpackUlong(GetReader());
 
             Assert.That(unpacked, Is.EqualTo(start));
         }
@@ -61,9 +61,9 @@ namespace JamesFrowen.BitPacking.Tests.Packers
         [Repeat(1000)]
         public void UnpacksCorrectUintValue()
         {
-            uint start = this.GetRandonUintBias();
-            this.packer.PackUint(this.writer, start);
-            uint unpacked = this.packer.UnpackUint(this.GetReader());
+            var start = GetRandonUintBias();
+            packer.PackUint(writer, start);
+            var unpacked = packer.UnpackUint(GetReader());
 
             Assert.That(unpacked, Is.EqualTo(start));
         }
@@ -72,9 +72,9 @@ namespace JamesFrowen.BitPacking.Tests.Packers
         [Repeat(1000)]
         public void UnpacksCorrectUshortValue()
         {
-            ushort start = this.GetRandonUshortBias();
-            this.packer.PackUshort(this.writer, start);
-            ushort unpacked = this.packer.UnpackUshort(this.GetReader());
+            var start = GetRandonUshortBias();
+            packer.PackUshort(writer, start);
+            var unpacked = packer.UnpackUshort(GetReader());
 
             Assert.That(unpacked, Is.EqualTo(start));
         }

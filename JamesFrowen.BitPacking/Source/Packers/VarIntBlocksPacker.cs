@@ -25,9 +25,9 @@ SOFTWARE.
 using System;
 using System.Runtime.CompilerServices;
 
-namespace JamesFrowen.BitPacking
+namespace Mirage.Serialization
 {
-    public static class VariableBlockPacker
+    public static class VarIntBlocksPacker
     {
         // todo needs doc comments
         // todo neeeds tests
@@ -36,8 +36,8 @@ namespace JamesFrowen.BitPacking
         public static void Pack(NetworkWriter writer, ulong value, int blockSize)
         {
             // always writes atleast 1 block
-            int count = 1;
-            ulong checkValue = value >> blockSize;
+            var count = 1;
+            var checkValue = value >> blockSize;
             while (checkValue != 0)
             {
                 count++;
@@ -53,7 +53,7 @@ namespace JamesFrowen.BitPacking
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ulong Unpack(NetworkReader reader, int blockSize)
         {
-            int blocks = 1;
+            var blocks = 1;
             // read bits till we see a zero
             while (reader.ReadBoolean())
             {
